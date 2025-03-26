@@ -1096,9 +1096,37 @@ class _RoomScreenState extends State<RoomScreen> {
                 border: Border.all(color: Colors.grey.shade800),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text(
-                '存档目录: ${GameState.SAVE_DIRECTORY}',
-                style: const TextStyle(color: Colors.white),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '存档目录: ${GameState.SAVE_DIRECTORY}',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '自动存档',
+                        style: TextStyle(color: Colors.grey.shade300),
+                      ),
+                      Switch(
+                        value: widget.gameState.autoSaveEnabled,
+                        onChanged: (value) {
+                          widget.gameState.setAutoSaveEnabled(value);
+                          _addLog(value ? '已启用自动存档' : '已禁用自动存档');
+                        },
+                      ),
+                    ],
+                  ),
+                  if (widget.gameState.autoSaveEnabled)
+                    Text(
+                      '上次自动存档: ${widget.gameState.lastAutoSave.toString().substring(0, 16)}',
+                      style:
+                          TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                    ),
+                ],
               ),
             ),
             const SizedBox(height: 10),

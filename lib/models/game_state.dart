@@ -31,20 +31,20 @@ class GameState extends ChangeNotifier {
 
   // 资源存储上限
   Map<String, int> resourceLimits = {
-    'wood': 10000000,
-    'fur': 50,
-    'meat': 50,
-    'scales': 30,
-    'teeth': 30,
-    'leather': 50,
-    'cloth': 50,
-    'herbs': 30,
-    'coal': 50,
-    'iron': 50,
-    'steel': 30,
-    'sulphur': 30,
-    'cured meat': 50,
-    'water': 50
+    'wood': 9999,
+    'fur': 500,
+    'meat': 500,
+    'scales': 300,
+    'teeth': 300,
+    'leather': 500,
+    'cloth': 500,
+    'herbs': 300,
+    'coal': 500,
+    'iron': 500,
+    'steel': 300,
+    'sulphur': 300,
+    'cured meat': 500,
+    'water': 500
   };
 
   // 建筑定义
@@ -116,6 +116,19 @@ class GameState extends ChangeNotifier {
       'notification': '肉可以储存更久了。',
       'effects': {'meat_storage': 50},
     },
+    'weapons': {
+      'name': '武器工坊',
+      'description': '制作狩猎武器',
+      'cost': {
+        'wood': 50,
+        'iron': 20,
+        'steel': 10,
+      },
+      'notification': '武器工坊可以制作更好的狩猎武器了。',
+      'requires': {
+        'buildings': {'trading_post': 1}
+      },
+    },
     'workshop': {
       'name': '工坊',
       'description': '制作高级工具',
@@ -159,6 +172,18 @@ class GameState extends ChangeNotifier {
       'cost': {'wood': 50},
       'notification': '水井建好了。',
       'effects': {'water_production': 1}, // 每次产出1单位水
+    },
+    'mine': {
+      'name': '矿场',
+      'description': '开采铁和煤',
+      'cost': {
+        'wood': 200,
+        'leather': 50,
+      },
+      'notification': '矿工开始工作了。',
+      'requires': {
+        'buildings': {'trading_post': 1}
+      },
     },
   };
 
@@ -500,8 +525,8 @@ class GameState extends ChangeNotifier {
     'small_game': {
       'name': '小型猎物',
       'outcomes': {
-        'meat': {'min': 1, 'max': 3},
-        'fur': {'min': 0, 'max': 2},
+        'meat': {'min': 100, 'max': 300},
+        'fur': {'min': 100, 'max': 200},
       },
       'time': 3, // 狩猎时间（秒）
     },
@@ -598,6 +623,11 @@ class GameState extends ChangeNotifier {
   // 添加水资源生产计时器
   Timer? _waterTimer;
 
+  // 添加自动存档相关字段
+  Timer? _autoSaveTimer;
+  bool _autoSaveEnabled = true;
+  DateTime _lastAutoSave = DateTime.now();
+
   // 在构造函数中初始化水资源生产
   GameState() {
     // 初始化基本状态
@@ -617,7 +647,49 @@ class GameState extends ChangeNotifier {
       }
     });
 
+    // 初始化自动存档定时器
+    _initAutoSave();
+
     // ... 其他初始化代码 ...
+  }
+
+  // 初始化自动存档
+  void _initAutoSave() {
+    _autoSaveTimer?.cancel();
+    _autoSaveTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      if (_autoSaveEnabled) {
+        _performAutoSave();
+      }
+    });
+  }
+
+  // 执行自动存档
+  Future<void> _performAutoSave() async {
+    try {
+      await saveGame();
+      _lastAutoSave = DateTime.now();
+      addLog('游戏已自动保存');
+    } catch (e) {
+      print('自动存档失败: $e');
+      addLog('自动存档失败: $e');
+    }
+  }
+
+  // 获取上次自动存档时间
+  DateTime get lastAutoSave => _lastAutoSave;
+
+  // 获取自动存档状态
+  bool get autoSaveEnabled => _autoSaveEnabled;
+
+  // 设置自动存档状态
+  void setAutoSaveEnabled(bool enabled) {
+    _autoSaveEnabled = enabled;
+    if (enabled) {
+      _initAutoSave();
+    } else {
+      _autoSaveTimer?.cancel();
+    }
+    notifyListeners();
   }
 
   // 水资源生产方法
@@ -662,33 +734,17 @@ class GameState extends ChangeNotifier {
     eventTimer?.cancel();
     huntingTimer?.cancel();
     _waterTimer?.cancel();
+    _autoSaveTimer?.cancel(); // 添加自动存档定时器的清理
     super.dispose();
   }
 
   // 添加日志列表
-  final List<String> gameLogs = [];
+  List<String> gameLogs = [];
 
   // 添加日志方法
   void addLog(String message) {
     gameLogs.add(message);
     notifyListeners();
-  }
-
-  // 从JSON创建游戏状态
-  GameState.fromJson(Map<String, dynamic> json) {
-    currentLocation = json['currentLocation'] ?? 'room';
-    resources = Map<String, int>.from(json['resources'] ?? {});
-    room = Map<String, dynamic>.from(json['room'] ?? {});
-    character = Map<String, dynamic>.from(json['character'] ?? {});
-    world = Map<String, dynamic>.from(json['world'] ?? {});
-    population = Map<String, dynamic>.from(json['population'] ??
-        {'workers': {}, 'total': 0, 'max': 0, 'happiness': 100});
-    storeOpened = json['storeOpened'] ?? false;
-    outsideUnlocked = json['outsideUnlocked'] ?? false;
-    craftingUnlocked = json['craftingUnlocked'] ?? false;
-    buildingLevels = Map<String, int>.from(json['buildingLevels'] ?? {});
-    buildingEfficiencyPenalty =
-        Map<String, double>.from(json['buildingEfficiencyPenalty'] ?? {});
   }
 
   // 转换为JSON
@@ -705,7 +761,49 @@ class GameState extends ChangeNotifier {
       'craftingUnlocked': craftingUnlocked,
       'buildingLevels': buildingLevels,
       'buildingEfficiencyPenalty': buildingEfficiencyPenalty,
+      'buildingMaintenance': buildingMaintenance,
+      'eventSystem': eventSystem.toJson(),
+      'tradeSystem': tradeSystem.toJson(),
+      'combat': combat,
+      'resourceProductionMultipliers': resourceProductionMultipliers,
+      'resourceEfficiency': resourceEfficiency,
+      'isHunting': isHunting,
+      'currentHuntType': currentHuntType,
+      'huntingTimeLeft': huntingTimeLeft,
+      'isGatheringWater': isGatheringWater,
+      'gameLogs': gameLogs,
     };
+  }
+
+  // 从JSON加载
+  GameState.fromJson(Map<String, dynamic> json) {
+    currentLocation = json['currentLocation'] ?? 'room';
+    resources = Map<String, int>.from(json['resources'] ?? {});
+    room = Map<String, dynamic>.from(json['room'] ?? {});
+    character = Map<String, dynamic>.from(json['character'] ?? {});
+    world = Map<String, dynamic>.from(json['world'] ?? {});
+    population = Map<String, dynamic>.from(json['population'] ??
+        {'workers': {}, 'total': 0, 'max': 0, 'happiness': 100});
+    storeOpened = json['storeOpened'] ?? false;
+    outsideUnlocked = json['outsideUnlocked'] ?? false;
+    craftingUnlocked = json['craftingUnlocked'] ?? false;
+    buildingLevels = Map<String, int>.from(json['buildingLevels'] ?? {});
+    buildingEfficiencyPenalty =
+        Map<String, double>.from(json['buildingEfficiencyPenalty'] ?? {});
+    buildingMaintenance = Map<String, Map<String, dynamic>>.from(
+        json['buildingMaintenance'] ?? {});
+    eventSystem.fromJson(json['eventSystem'] ?? {});
+    tradeSystem.fromJson(json['tradeSystem'] ?? {});
+    combat = Map<String, dynamic>.from(json['combat'] ?? {});
+    resourceProductionMultipliers =
+        Map<String, double>.from(json['resourceProductionMultipliers'] ?? {});
+    resourceEfficiency =
+        Map<String, double>.from(json['resourceEfficiency'] ?? {});
+    isHunting = json['isHunting'] ?? false;
+    currentHuntType = json['currentHuntType'];
+    huntingTimeLeft = json['huntingTimeLeft'] ?? 0;
+    isGatheringWater = json['isGatheringWater'] ?? false;
+    gameLogs = List<String>.from(json['gameLogs'] ?? []);
   }
 
   // 添加资源
@@ -1389,6 +1487,178 @@ class GameState extends ChangeNotifier {
     _waterTimer?.cancel();
 
     // 通知监听器更新UI
+    notifyListeners();
+  }
+
+  // 战斗系统
+  Map<String, dynamic> combat = {
+    'in_combat': false,
+    'current_enemy': null,
+    'combat_round': 0,
+    'player_health': 10,
+    'player_max_health': 10,
+    'player_attack': 2,
+    'player_defense': 1,
+    'inventory': [],
+  };
+
+  // 敌人配置
+  final Map<String, Map<String, dynamic>> enemies = {
+    'wolf': {
+      'name': '狼',
+      'health': 5,
+      'attack': 2,
+      'defense': 1,
+      'loot': ['fur', 'meat'],
+      'loot_chance': 0.7,
+    },
+    'bear': {
+      'name': '熊',
+      'health': 8,
+      'attack': 4,
+      'defense': 2,
+      'loot': ['fur', 'meat'],
+      'loot_chance': 0.8,
+    },
+    'snake': {
+      'name': '毒蛇',
+      'health': 3,
+      'attack': 1,
+      'defense': 0,
+      'loot': ['venom'],
+      'loot_chance': 0.6,
+    },
+    'bat': {
+      'name': '蝙蝠',
+      'health': 2,
+      'attack': 1,
+      'defense': 0,
+      'loot': ['leather'],
+      'loot_chance': 0.5,
+    },
+    'spider': {
+      'name': '蜘蛛',
+      'health': 4,
+      'attack': 2,
+      'defense': 1,
+      'loot': ['silk'],
+      'loot_chance': 0.6,
+    },
+    'crocodile': {
+      'name': '鳄鱼',
+      'health': 7,
+      'attack': 3,
+      'defense': 2,
+      'loot': ['leather', 'teeth'],
+      'loot_chance': 0.7,
+    },
+    'scorpion': {
+      'name': '蝎子',
+      'health': 3,
+      'attack': 2,
+      'defense': 1,
+      'loot': ['venom'],
+      'loot_chance': 0.6,
+    },
+    'ghost': {
+      'name': '幽灵',
+      'health': 6,
+      'attack': 3,
+      'defense': 0,
+      'loot': ['ectoplasm'],
+      'loot_chance': 0.5,
+    },
+  };
+
+  // 开始战斗
+  bool startCombat(String enemyId) {
+    if (combat['in_combat'] || !enemies.containsKey(enemyId)) return false;
+
+    combat['in_combat'] = true;
+    combat['current_enemy'] = enemyId;
+    combat['combat_round'] = 0;
+    combat['player_health'] = combat['player_max_health'];
+    notifyListeners();
+    return true;
+  }
+
+  // 进行攻击
+  Map<String, dynamic> attack() {
+    if (!combat['in_combat']) return {'success': false, 'message': '不在战斗中'};
+
+    String enemyId = combat['current_enemy'];
+    Map<String, dynamic> enemy = enemies[enemyId]!;
+    combat['combat_round']++;
+
+    // 玩家攻击
+    int playerDamage = (combat['player_attack'] - enemy['defense'])
+        .clamp(1, double.infinity)
+        .toInt();
+    enemy['health'] -= playerDamage;
+
+    // 检查敌人是否死亡
+    if (enemy['health'] <= 0) {
+      return _handleEnemyDeath(enemyId);
+    }
+
+    // 敌人反击
+    int enemyDamage = (enemy['attack'] - combat['player_defense'])
+        .clamp(1, double.infinity)
+        .toInt();
+    combat['player_health'] -= enemyDamage;
+
+    // 检查玩家是否死亡
+    if (combat['player_health'] <= 0) {
+      return {'success': false, 'message': '你被${enemy['name']}杀死了'};
+    }
+
+    notifyListeners();
+    return {
+      'success': true,
+      'message':
+          '你对${enemy['name']}造成了$playerDamage点伤害，${enemy['name']}对你造成了$enemyDamage点伤害',
+      'enemy_health': enemy['health'],
+      'player_health': combat['player_health'],
+    };
+  }
+
+  // 处理敌人死亡
+  Map<String, dynamic> _handleEnemyDeath(String enemyId) {
+    Map<String, dynamic> enemy = enemies[enemyId]!;
+    combat['in_combat'] = false;
+    combat['current_enemy'] = null;
+
+    // 处理战利品
+    if (Random().nextDouble() < enemy['loot_chance']) {
+      List<String> loot = enemy['loot'] as List<String>;
+      String item = loot[Random().nextInt(loot.length)];
+      addResource(item, 1);
+    }
+
+    notifyListeners();
+    return {
+      'success': true,
+      'message': '你击败了${enemy['name']}',
+      'loot': enemy['loot'],
+    };
+  }
+
+  // 逃跑
+  bool flee() {
+    if (!combat['in_combat']) return false;
+
+    combat['in_combat'] = false;
+    combat['current_enemy'] = null;
+    notifyListeners();
+    return true;
+  }
+
+  // 重置战斗状态
+  void resetCombat() {
+    combat['in_combat'] = false;
+    combat['current_enemy'] = null;
+    combat['combat_round'] = 0;
+    combat['player_health'] = combat['player_max_health'];
     notifyListeners();
   }
 }

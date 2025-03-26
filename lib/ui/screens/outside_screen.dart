@@ -99,6 +99,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
           _locationInfo[_currentLocation]?['exploration_time'] ?? 30;
     });
 
+    _addLog('开始在${_locationInfo[_currentLocation]['name']}探索...');
     _explorationTimer();
   }
 
@@ -111,6 +112,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
           _locationInfo[_currentLocation]?['scavenging_time'] ?? 20;
     });
 
+    _addLog('开始在${_locationInfo[_currentLocation]['name']}搜索...');
     _scavengingTimer();
   }
 
@@ -186,8 +188,13 @@ class _OutsideScreenState extends State<OutsideScreen> {
         _discoveredLocations.add(newLocation);
         _locationInfo[newLocation] = _generateLocationInfo(newLocation);
         _updateWorldState();
+        _addLog('探索发现了一个新的地点：${_locationInfo[newLocation]['name']}');
         _showNewLocationDialog(newLocation);
+      } else {
+        _addLog('探索完成，但没有发现新的地点。');
       }
+    } else {
+      _addLog('探索完成，但没有发现新的地点。');
     }
   }
 
@@ -204,8 +211,10 @@ class _OutsideScreenState extends State<OutsideScreen> {
           availableResources[Random().nextInt(availableResources.length)];
       int amount = Random().nextInt(3) + 1;
       widget.gameState.addResource(resource, amount);
-      widget.gameState.addLog(
+      _addLog(
           '在${_locationInfo[_currentLocation]['name']}中找到了 $amount 个 $resource');
+    } else {
+      _addLog('搜索完成，但没有找到任何资源。');
     }
   }
 
@@ -297,27 +306,69 @@ class _OutsideScreenState extends State<OutsideScreen> {
   }
 
   void _handleDanger(String danger) {
-    // 处理危险生物
-    switch (danger) {
-      case 'wolf':
-        widget.gameState.character['health'] -= 2;
-        widget.gameState.addLog('遇到了一只狼，受到了伤害！');
-        break;
-      case 'bear':
-        widget.gameState.character['health'] -= 4;
-        widget.gameState.addLog('遇到了一只熊，受到了严重伤害！');
-        break;
-      case 'snake':
-        widget.gameState.character['health'] -= 1;
-        widget.gameState.addLog('被毒蛇咬伤了！');
-        break;
-      // 添加更多危险生物的处理...
+    if (widget.gameState.startCombat(danger)) {
+      _showCombatDialog();
     }
+  }
 
-    // 检查生命值
-    if (widget.gameState.character['health'] <= 0) {
-      _showGameOverDialog();
-    }
+  void _showCombatDialog() {
+    String enemyId = widget.gameState.combat['current_enemy'];
+    Map<String, dynamic> enemy = widget.gameState.enemies[enemyId]!;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey.shade900,
+        title: Text(
+          '战斗 - ${enemy['name']}',
+          style: const TextStyle(color: Colors.white),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '敌人生命值: ${enemy['health']}',
+              style: const TextStyle(color: Colors.white),
+            ),
+            Text(
+              '你的生命值: ${widget.gameState.combat['player_health']}',
+              style: const TextStyle(color: Colors.white),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '回合: ${widget.gameState.combat['combat_round']}',
+              style: const TextStyle(color: Colors.white),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Map<String, dynamic> result = widget.gameState.attack();
+              if (!result['success']) {
+                Navigator.of(context).pop();
+                if (result['message'].contains('杀死了')) {
+                  _showGameOverDialog();
+                }
+              } else {
+                Navigator.of(context).pop();
+                _showCombatDialog();
+              }
+            },
+            child: const Text('攻击'),
+          ),
+          TextButton(
+            onPressed: () {
+              widget.gameState.flee();
+              Navigator.of(context).pop();
+            },
+            child: const Text('逃跑'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showNewLocationDialog(String location) {
@@ -455,6 +506,21 @@ class _OutsideScreenState extends State<OutsideScreen> {
 
   // 构建狩猎按钮
   Widget _buildHuntingButtons() {
+    if (widget.gameState.combat['in_combat']) {
+      return Column(
+        children: [
+          Text(
+            '正在战斗: ${widget.gameState.enemies[widget.gameState.combat['current_enemy']]!['name']}',
+            style: const TextStyle(color: Colors.white),
+          ),
+          Text(
+            '回合: ${widget.gameState.combat['combat_round']}',
+            style: const TextStyle(color: Colors.white),
+          ),
+        ],
+      );
+    }
+
     if (widget.gameState.isHunting) {
       return Column(
         children: [
@@ -529,6 +595,121 @@ class _OutsideScreenState extends State<OutsideScreen> {
     );
   }
 
+  // 构建位置选择器
+  Widget _buildLocationSelector() {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade900,
+        border: Border.all(color: Colors.grey.shade800),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '当前位置: ${_locationInfo[_currentLocation]?['name'] ?? '未知'}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _locationInfo[_currentLocation]?['description'] ?? '',
+            style: TextStyle(
+              color: Colors.grey.shade300,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _discoveredLocations.map((location) {
+              bool isCurrent = location == _currentLocation;
+              return ElevatedButton(
+                onPressed: isCurrent
+                    ? null
+                    : () {
+                        setState(() {
+                          _currentLocation = location;
+                        });
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      isCurrent ? Colors.blue.shade900 : Colors.grey.shade800,
+                  disabledBackgroundColor: Colors.grey.shade900,
+                ),
+                child: Text(
+                  _locationInfo[location]?['name'] ?? location,
+                  style: TextStyle(
+                    color: isCurrent ? Colors.white : Colors.grey.shade300,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 构建探索按钮
+  Widget _buildExplorationButtons() {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade900,
+        border: Border.all(color: Colors.grey.shade800),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '探索',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ElevatedButton(
+                onPressed: _isExploring ? null : _startExploring,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey.shade800,
+                  disabledBackgroundColor: Colors.grey.shade900,
+                ),
+                child: Text(
+                  _isExploring ? '探索中... $_explorationTimeLeft秒' : '探索',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: _isScavenging ? null : _startScavenging,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey.shade800,
+                  disabledBackgroundColor: Colors.grey.shade900,
+                ),
+                child: Text(
+                  _isScavenging ? '搜索中... $_scavengingTimeLeft秒' : '搜索',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   // 修改主界面布局
   @override
   Widget build(BuildContext context) {
@@ -544,6 +725,10 @@ class _OutsideScreenState extends State<OutsideScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildResourceDisplay(),
+                    const SizedBox(height: 16),
+                    _buildLocationSelector(),
+                    const SizedBox(height: 16),
+                    _buildExplorationButtons(),
                     const SizedBox(height: 16),
                     const Text(
                       '狩猎',
