@@ -23,6 +23,7 @@ class _RoomScreenState extends State<RoomScreen> {
   bool _showVillagersMenu = false; // 控制村民菜单的显示
   bool _showTradeMenu = false;
   bool _showSaveMenu = false;
+  bool _showCraftingMenu = false;
   Map<String, int> _resources = {}; // 资源
   Map<String, int> _buildings = {}; // 已建造的建筑
   Map<String, dynamic> _population = {}; // 村民状态
@@ -289,21 +290,23 @@ class _RoomScreenState extends State<RoomScreen> {
                             ? _buildTradeMenu()
                             : _showSaveMenu
                                 ? _buildSaveMenu()
-                                : Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      _buildFireStatus(),
-                                      const SizedBox(height: 16),
-                                      _buildResourceDisplay(),
-                                      const SizedBox(height: 16),
-                                      _buildWorkerStatus(),
-                                      const SizedBox(height: 16),
-                                      _buildBuildingsGrid(),
-                                      const SizedBox(height: 16),
-                                      _buildGameLog(),
-                                    ],
-                                  ),
+                                : _showCraftingMenu
+                                    ? _buildCraftingMenu()
+                                    : Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          _buildFireStatus(),
+                                          const SizedBox(height: 16),
+                                          _buildResourceDisplay(),
+                                          const SizedBox(height: 16),
+                                          _buildWorkerStatus(),
+                                          const SizedBox(height: 16),
+                                          _buildBuildingsGrid(),
+                                          const SizedBox(height: 16),
+                                          _buildGameLog(),
+                                        ],
+                                      ),
               ),
             ),
             Container(
@@ -509,7 +512,8 @@ class _RoomScreenState extends State<RoomScreen> {
           if (!_showBuildingsMenu &&
               !_showVillagersMenu &&
               !_showTradeMenu &&
-              !_showSaveMenu)
+              !_showSaveMenu &&
+              !_showCraftingMenu)
             _buildMainActionButtons(),
           const SizedBox(height: 8),
         ],
@@ -521,6 +525,7 @@ class _RoomScreenState extends State<RoomScreen> {
   Widget _buildMainActionButtons() {
     bool outsideUnlocked = widget.gameState.outsideUnlocked;
     bool storeOpened = widget.gameState.storeOpened;
+    bool craftingUnlocked = widget.gameState.craftingUnlocked;
 
     return Wrap(
       spacing: 10,
@@ -544,6 +549,7 @@ class _RoomScreenState extends State<RoomScreen> {
             _showVillagersMenu = false;
             _showTradeMenu = false;
             _showSaveMenu = false;
+            _showCraftingMenu = false;
           });
         }),
         _buildActionButton('村民', _fireLevel > 0, () {
@@ -552,6 +558,7 @@ class _RoomScreenState extends State<RoomScreen> {
             _showBuildingsMenu = false;
             _showTradeMenu = false;
             _showSaveMenu = false;
+            _showCraftingMenu = false;
           });
         }),
         if (storeOpened)
@@ -560,6 +567,17 @@ class _RoomScreenState extends State<RoomScreen> {
               _showTradeMenu = true;
               _showBuildingsMenu = false;
               _showVillagersMenu = false;
+              _showSaveMenu = false;
+              _showCraftingMenu = false;
+            });
+          }),
+        if (craftingUnlocked)
+          _buildActionButton('制作', true, () {
+            setState(() {
+              _showCraftingMenu = true;
+              _showBuildingsMenu = false;
+              _showVillagersMenu = false;
+              _showTradeMenu = false;
               _showSaveMenu = false;
             });
           }),
@@ -576,6 +594,7 @@ class _RoomScreenState extends State<RoomScreen> {
             _showBuildingsMenu = false;
             _showVillagersMenu = false;
             _showTradeMenu = false;
+            _showCraftingMenu = false;
           });
         }),
       ],
@@ -1372,5 +1391,122 @@ class _RoomScreenState extends State<RoomScreen> {
         );
       }
     }
+  }
+
+  // 构建制作菜单
+  Widget _buildCraftingMenu() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ...widget.gameState.craftingSystem.recipes.entries.map((entry) {
+          final recipeId = entry.key;
+          final recipe = entry.value;
+          final canCraft = widget.gameState.canCraft(recipeId);
+          final isCrafting =
+              widget.gameState.craftingSystem.isCrafting(recipeId);
+          final progress =
+              widget.gameState.craftingSystem.getCraftingProgress(recipeId);
+
+          return Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 10),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade900,
+              border: Border.all(
+                color: canCraft ? Colors.grey.shade700 : Colors.grey.shade800,
+              ),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Column(
+              children: [
+                ListTile(
+                  title: Text(
+                    recipe.name,
+                    style: TextStyle(
+                      color: canCraft ? Colors.white : Colors.grey,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        recipe.description,
+                        style: TextStyle(
+                          color: canCraft
+                              ? Colors.grey.shade300
+                              : Colors.grey.shade600,
+                          fontSize: 12,
+                        ),
+                      ),
+                      Text(
+                        '需要: ${_formatCost(recipe.ingredients)}',
+                        style: TextStyle(
+                          color: canCraft
+                              ? Colors.grey.shade400
+                              : Colors.grey.shade700,
+                          fontSize: 12,
+                        ),
+                      ),
+                      Text(
+                        '产出: ${_formatCost(recipe.outputs)}',
+                        style: TextStyle(
+                          color: Colors.green.shade300,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                  trailing: isCrafting
+                      ? SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            value: progress,
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.blue.shade300,
+                            ),
+                          ),
+                        )
+                      : null,
+                  onTap: canCraft && !isCrafting
+                      ? () {
+                          if (widget.gameState.startCrafting(recipeId)) {
+                            _updateState();
+                          }
+                        }
+                      : null,
+                ),
+                if (isCrafting)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      backgroundColor: Colors.grey.shade800,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Colors.blue.shade300,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        }),
+        const SizedBox(height: 16),
+        ElevatedButton(
+          onPressed: () {
+            setState(() {
+              _showCraftingMenu = false;
+            });
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.grey.shade800,
+            minimumSize: const Size(double.infinity, 40),
+          ),
+          child: const Text('返回'),
+        ),
+      ],
+    );
   }
 }

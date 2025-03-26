@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../engine/game_engine.dart';
 import '../../models/game_state.dart';
+import '../../models/combat_system.dart';
 import 'dart:math';
 
 /// 户外屏幕 - 村庄和探索
@@ -28,6 +29,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
   String _currentLocation = 'forest';
   List<String> _discoveredLocations = [];
   Map<String, dynamic> _locationInfo = {};
+  String _currentHuntType = '';
 
   @override
   void initState() {
@@ -116,15 +118,29 @@ class _OutsideScreenState extends State<OutsideScreen> {
     _scavengingTimer();
   }
 
-  void _startHunting() {
+  void _startHunting(String type) {
     if (_isHunting) return;
 
     setState(() {
       _isHunting = true;
-      _huntingTimeLeft = _locationInfo[_currentLocation]?['hunting_time'] ?? 15;
+      _currentHuntType = type;
     });
 
-    _huntingTimer();
+    String enemyId;
+    switch (type) {
+      case 'small':
+        enemyId = 'wolf';
+        break;
+      case 'large':
+        enemyId = Random().nextBool() ? 'bear' : 'bandit';
+        break;
+      default:
+        return;
+    }
+
+    if (widget.gameState.combatSystem.startCombat(enemyId, widget.gameState)) {
+      _addLog('遭遇了${widget.gameState.combatSystem.enemies[enemyId]!.name}！');
+    }
   }
 
   void _explorationTimer() {
@@ -504,94 +520,92 @@ class _OutsideScreenState extends State<OutsideScreen> {
     );
   }
 
-  // 构建狩猎按钮
-  Widget _buildHuntingButtons() {
-    if (widget.gameState.combat['in_combat']) {
-      return Column(
-        children: [
-          Text(
-            '正在战斗: ${widget.gameState.enemies[widget.gameState.combat['current_enemy']]!['name']}',
-            style: const TextStyle(color: Colors.white),
-          ),
-          Text(
-            '回合: ${widget.gameState.combat['combat_round']}',
-            style: const TextStyle(color: Colors.white),
-          ),
-        ],
-      );
+  // 构建动作按钮
+  Widget _buildActionButtons() {
+    if (_isHunting && widget.gameState.combatSystem.isInCombat) {
+      return const SizedBox.shrink(); // 战斗时不显示其他按钮
     }
 
-    if (widget.gameState.isHunting) {
-      return Column(
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            '正在狩猎: ${widget.gameState.huntingOutcomes[widget.gameState.currentHuntType]!['name']}',
-            style: const TextStyle(color: Colors.white),
-          ),
-          Text(
-            '剩余时间: ${widget.gameState.huntingTimeLeft}秒',
-            style: const TextStyle(color: Colors.white),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              // 探索按钮
+              ElevatedButton(
+                onPressed: _isExploring ? null : _startExploring,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey.shade800,
+                  disabledBackgroundColor: Colors.grey.shade900,
+                ),
+                child: Text(
+                  _isExploring ? '探索中... $_explorationTimeLeft秒' : '探索',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+              // 搜索按钮
+              ElevatedButton(
+                onPressed: _isScavenging ? null : _startScavenging,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey.shade800,
+                  disabledBackgroundColor: Colors.grey.shade900,
+                ),
+                child: Text(
+                  _isScavenging ? '搜索中... $_scavengingTimeLeft秒' : '搜索',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+              // 狩猎按钮
+              if (!_isHunting) ...[
+                ElevatedButton(
+                  onPressed: () => _startHunting('small'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey.shade800,
+                  ),
+                  child: const Text('小型狩猎'),
+                ),
+                ElevatedButton(
+                  onPressed: () => _startHunting('large'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey.shade800,
+                  ),
+                  child: const Text('大型狩猎'),
+                ),
+              ],
+              // 收集水按钮
+              ElevatedButton(
+                onPressed: widget.gameState.isGatheringWater
+                    ? null
+                    : () => widget.gameState.gatherWater(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey.shade800,
+                  disabledBackgroundColor: Colors.grey.shade900,
+                ),
+                child: Text(
+                  widget.gameState.isGatheringWater ? '正在收集水...' : '收集水',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+              // 返回房间按钮
+              ElevatedButton(
+                onPressed: () {
+                  widget.gameState.currentLocation = 'room';
+                  widget.gameState.notifyListeners();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey.shade800,
+                ),
+                child: const Text('返回房间'),
+              ),
+            ],
           ),
         ],
-      );
-    }
-
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: widget.gameState.huntingOutcomes.entries.map((entry) {
-        String huntType = entry.key;
-        Map<String, dynamic> config = entry.value;
-        bool hasRequiredWeapons = true;
-
-        if (config.containsKey('requires')) {
-          var requires = config['requires'] as Map<String, int>;
-          int weaponsLevel =
-              widget.gameState.room['buildings']?['weapons'] ?? 0;
-          hasRequiredWeapons = weaponsLevel >= (requires['weapons'] ?? 0);
-        }
-
-        return ElevatedButton(
-          onPressed: hasRequiredWeapons
-              ? () {
-                  if (widget.gameState.startHunting(huntType)) {
-                    _addLog('开始狩猎${config['name']}');
-                  }
-                }
-              : null,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey.shade800,
-            disabledBackgroundColor: Colors.grey.shade900,
-            foregroundColor: Colors.white,
-            disabledForegroundColor: Colors.grey,
-            minimumSize: const Size(120, 40),
-          ),
-          child: Text(
-            config['name'] as String,
-            style: const TextStyle(fontSize: 14),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildGatheringButtons() {
-    return Column(
-      children: [
-        ElevatedButton(
-          onPressed: widget.gameState.isGatheringWater
-              ? null
-              : () => widget.gameState.gatherWater(),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey.shade800,
-            disabledBackgroundColor: Colors.grey.shade900,
-          ),
-          child: Text(
-            widget.gameState.isGatheringWater ? '正在收集水...' : '收集水',
-            style: const TextStyle(color: Colors.white),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -656,52 +670,101 @@ class _OutsideScreenState extends State<OutsideScreen> {
     );
   }
 
-  // 构建探索按钮
-  Widget _buildExplorationButtons() {
+  // 构建战斗界面
+  Widget _buildCombatScreen() {
+    final combatState = widget.gameState.combatSystem.getCombatState();
+    final enemy = combatState['currentEnemy'] as Enemy;
+    final playerHealth = combatState['playerHealth'] as int;
+    final enemyHealth = combatState['enemyHealth'] as int;
+    final turnsLeft = combatState['turnsLeft'] as int;
+
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.grey.shade900,
         border: Border.all(color: Colors.grey.shade800),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '探索',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
+          Text(
+            '战斗 - ${enemy.name}',
+            style: const TextStyle(
+              fontSize: 20,
               fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          const SizedBox(height: 16),
+          Text(
+            '敌人生命值: $enemyHealth / ${enemy.health}',
+            style: const TextStyle(color: Colors.white),
+          ),
+          Text(
+            '你的生命值: $playerHealth / 100',
+            style: const TextStyle(color: Colors.white),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '剩余回合: $turnsLeft',
+            style: const TextStyle(color: Colors.white),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               ElevatedButton(
-                onPressed: _isExploring ? null : _startExploring,
+                onPressed: () {
+                  Map<String, dynamic> result = widget.gameState.combatSystem
+                      .executeCombatTurn(widget.gameState);
+                  if (result['success']) {
+                    _addLog(result['message']);
+                    if (result.containsKey('victory')) {
+                      // 战斗结束
+                      if (result['victory']) {
+                        _addLog('战斗胜利！获得了战利品：');
+                        (result['loot'] as Map<String, int>)
+                            .forEach((resource, amount) {
+                          _addLog('$resource: $amount');
+                        });
+                        if (result.containsKey('experience')) {
+                          _addLog('获得了 ${result['experience']} 点经验');
+                        }
+                      } else {
+                        _addLog('战斗失败...');
+                      }
+                      setState(() {
+                        _isHunting = false;
+                        _currentHuntType = '';
+                      });
+                    }
+                  } else {
+                    _addLog(result['message']);
+                  }
+                  setState(() {});
+                },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey.shade800,
-                  disabledBackgroundColor: Colors.grey.shade900,
+                  backgroundColor: Colors.blue.shade700,
+                  minimumSize: const Size(100, 40),
                 ),
-                child: Text(
-                  _isExploring ? '探索中... $_explorationTimeLeft秒' : '探索',
-                  style: const TextStyle(color: Colors.white),
-                ),
+                child: const Text('攻击'),
               ),
               ElevatedButton(
-                onPressed: _isScavenging ? null : _startScavenging,
+                onPressed: () {
+                  widget.gameState.combatSystem.dispose();
+                  setState(() {
+                    _isHunting = false;
+                    _currentHuntType = '';
+                  });
+                  _addLog('逃离了战斗');
+                },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey.shade800,
-                  disabledBackgroundColor: Colors.grey.shade900,
+                  backgroundColor: Colors.red.shade700,
+                  minimumSize: const Size(100, 40),
                 ),
-                child: Text(
-                  _isScavenging ? '搜索中... $_scavengingTimeLeft秒' : '搜索',
-                  style: const TextStyle(color: Colors.white),
-                ),
+                child: const Text('逃跑'),
               ),
             ],
           ),
@@ -710,7 +773,6 @@ class _OutsideScreenState extends State<OutsideScreen> {
     );
   }
 
-  // 修改主界面布局
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -724,55 +786,30 @@ class _OutsideScreenState extends State<OutsideScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildResourceDisplay(),
+                    if (_isHunting && widget.gameState.combatSystem.isInCombat)
+                      _buildCombatScreen(),
+                    if (!_isHunting) ...[
+                      _buildLocationSelector(),
+                      const SizedBox(height: 16),
+                      _buildResourceDisplay(),
+                    ],
                     const SizedBox(height: 16),
-                    _buildLocationSelector(),
-                    const SizedBox(height: 16),
-                    _buildExplorationButtons(),
-                    const SizedBox(height: 16),
-                    const Text(
-                      '狩猎',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildHuntingButtons(),
-                    const SizedBox(height: 16),
-                    _buildGatheringButtons(),
                     _buildGameLog(),
                   ],
                 ),
               ),
             ),
             Container(
-              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.black,
                 border: Border(
-                  top: BorderSide(color: Colors.grey.shade900),
+                  top: BorderSide(
+                    color: Colors.grey.shade900,
+                    width: 1,
+                  ),
                 ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      widget.gameState.currentLocation = 'room';
-                      widget.gameState.notifyListeners();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey.shade800,
-                    ),
-                    child: const Text(
-                      '返回房间',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
+              child: _buildActionButtons(),
             ),
           ],
         ),

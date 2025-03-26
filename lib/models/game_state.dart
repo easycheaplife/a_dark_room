@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'event_system.dart';
 import 'trade_system.dart';
+import 'crafting_system.dart';
+import 'combat_system.dart';
 import 'dart:math';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -438,8 +440,12 @@ class GameState extends ChangeNotifier {
 
   final EventSystem eventSystem = EventSystem();
   final TradeSystem tradeSystem = TradeSystem();
+  final CraftingSystem craftingSystem = CraftingSystem();
   GameEvent? currentEvent;
   Timer? eventTimer;
+
+  // 添加战斗系统
+  final CombatSystem combatSystem = CombatSystem();
 
   // 初始化事件系统
   void initEventSystem() {
@@ -735,6 +741,7 @@ class GameState extends ChangeNotifier {
     huntingTimer?.cancel();
     _waterTimer?.cancel();
     _autoSaveTimer?.cancel(); // 添加自动存档定时器的清理
+    combatSystem.dispose();
     super.dispose();
   }
 
@@ -748,6 +755,7 @@ class GameState extends ChangeNotifier {
   }
 
   // 转换为JSON
+  @override
   Map<String, dynamic> toJson() {
     return {
       'currentLocation': currentLocation,
@@ -764,6 +772,7 @@ class GameState extends ChangeNotifier {
       'buildingMaintenance': buildingMaintenance,
       'eventSystem': eventSystem.toJson(),
       'tradeSystem': tradeSystem.toJson(),
+      'craftingSystem': craftingSystem.toJson(),
       'combat': combat,
       'resourceProductionMultipliers': resourceProductionMultipliers,
       'resourceEfficiency': resourceEfficiency,
@@ -772,11 +781,14 @@ class GameState extends ChangeNotifier {
       'huntingTimeLeft': huntingTimeLeft,
       'isGatheringWater': isGatheringWater,
       'gameLogs': gameLogs,
+      'playerStats': _playerStats,
+      'combatSystem': combatSystem.toJson(),
     };
   }
 
   // 从JSON加载
-  GameState.fromJson(Map<String, dynamic> json) {
+  @override
+  void fromJson(Map<String, dynamic> json) {
     currentLocation = json['currentLocation'] ?? 'room';
     resources = Map<String, int>.from(json['resources'] ?? {});
     room = Map<String, dynamic>.from(json['room'] ?? {});
@@ -794,6 +806,7 @@ class GameState extends ChangeNotifier {
         json['buildingMaintenance'] ?? {});
     eventSystem.fromJson(json['eventSystem'] ?? {});
     tradeSystem.fromJson(json['tradeSystem'] ?? {});
+    craftingSystem.fromJson(json['craftingSystem'] ?? {});
     combat = Map<String, dynamic>.from(json['combat'] ?? {});
     resourceProductionMultipliers =
         Map<String, double>.from(json['resourceProductionMultipliers'] ?? {});
@@ -804,6 +817,12 @@ class GameState extends ChangeNotifier {
     huntingTimeLeft = json['huntingTimeLeft'] ?? 0;
     isGatheringWater = json['isGatheringWater'] ?? false;
     gameLogs = List<String>.from(json['gameLogs'] ?? []);
+    if (json.containsKey('playerStats')) {
+      _playerStats = Map<String, dynamic>.from(json['playerStats']);
+    }
+    if (json.containsKey('combatSystem')) {
+      combatSystem.fromJson(json['combatSystem']);
+    }
   }
 
   // 添加资源
@@ -1275,6 +1294,12 @@ class GameState extends ChangeNotifier {
         print('Loaded trade system state');
       }
 
+      // 加载制作系统状态
+      if (saveData['craftingSystem'] != null) {
+        craftingSystem.fromJson(saveData['craftingSystem']);
+        print('Loaded crafting system state');
+      }
+
       print('Game loaded successfully');
       notifyListeners();
       return true;
@@ -1479,6 +1504,7 @@ class GameState extends ChangeNotifier {
       'eventFlags': {},
     });
     tradeSystem.fromJson({});
+    craftingSystem.fromJson({});
     currentEvent = null;
 
     // 重置计时器
@@ -1659,6 +1685,66 @@ class GameState extends ChangeNotifier {
     combat['current_enemy'] = null;
     combat['combat_round'] = 0;
     combat['player_health'] = combat['player_max_health'];
+    notifyListeners();
+  }
+
+  // 检查是否可以制作物品
+  bool canCraft(String recipeId) {
+    if (!craftingUnlocked) return false;
+    CraftingRecipe? recipe = craftingSystem.recipes[recipeId];
+    if (recipe == null) return false;
+    return craftingSystem.canCraft(recipe, this);
+  }
+
+  // 开始制作物品
+  bool startCrafting(String recipeId) {
+    if (!canCraft(recipeId)) return false;
+    bool success = craftingSystem.startCrafting(recipeId, this);
+    if (success) {
+      CraftingRecipe recipe = craftingSystem.recipes[recipeId]!;
+      addLog('制作了 ${recipe.name}');
+    }
+    return success;
+  }
+
+  // 玩家等级和经验
+  Map<String, dynamic> _playerStats = {
+    'level': 1,
+    'experience': 0,
+    'nextLevelExperience': 100,
+  };
+
+  // 获取玩家等级
+  int get level => _playerStats['level'] as int;
+
+  // 获取当前经验值
+  int get experience => _playerStats['experience'] as int;
+
+  // 获取下一级所需经验
+  int get nextLevelExperience => _playerStats['nextLevelExperience'] as int;
+
+  // 添加经验值
+  void addExperience(int amount) {
+    _playerStats['experience'] = experience + amount;
+
+    // 检查是否升级
+    while (experience >= nextLevelExperience) {
+      levelUp();
+    }
+
+    notifyListeners();
+  }
+
+  // 升级
+  void levelUp() {
+    _playerStats['level'] = level + 1;
+    _playerStats['experience'] = experience - nextLevelExperience;
+    _playerStats['nextLevelExperience'] = (nextLevelExperience * 1.5).round();
+
+    // 升级奖励
+    addResource('money', 50 * level); // 金钱奖励
+
+    // 通知升级事件
     notifyListeners();
   }
 }
