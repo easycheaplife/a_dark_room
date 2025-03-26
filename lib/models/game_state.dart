@@ -219,6 +219,8 @@ class GameState extends ChangeNotifier {
   Map<String, dynamic> world = {
     'explored': 0, // 探索程度
     'locations': {}, // 已发现的位置
+    'discovered_locations': [],
+    'location_info': {},
   };
 
   // 游戏进度
@@ -1310,5 +1312,83 @@ class GameState extends ChangeNotifier {
       print('Error clearing all save slots: $e');
       rethrow;
     }
+  }
+
+  // 重置游戏状态
+  void resetGame() {
+    // 重置基本状态
+    currentLocation = 'room';
+    outsideUnlocked = false;
+    storeOpened = false;
+    craftingUnlocked = false;
+
+    // 重置资源
+    resources = {
+      'wood': 0,
+      'fur': 0,
+      'meat': 0,
+      'scales': 0,
+      'teeth': 0,
+      'leather': 0,
+      'cloth': 0,
+      'herbs': 0,
+      'coal': 0,
+      'iron': 0,
+      'steel': 0,
+      'sulphur': 0,
+      'cured meat': 0,
+      'water': 0
+    };
+
+    // 重置房间状态
+    room = {
+      'temperature': 'cold',
+      'fire': 0,
+      'buildings': {},
+    };
+
+    // 重置人口信息
+    population = {
+      'workers': {},
+      'total': 0,
+      'max': 0,
+      'happiness': 100,
+    };
+
+    // 重置角色状态
+    character = {
+      'health': 10,
+      'perks': [],
+    };
+
+    // 重置世界状态
+    world = {
+      'explored': 0,
+      'locations': {},
+      'discovered_locations': [],
+      'location_info': {},
+    };
+
+    // 重置建筑等级和维护信息
+    buildingLevels = {};
+    buildingMaintenance = {};
+    buildingEfficiencyPenalty = {};
+
+    // 重置事件和交易系统
+    eventSystem.fromJson({
+      'lastEventTime': DateTime.now().toIso8601String(),
+      'eventHistory': [],
+      'eventFlags': {},
+    });
+    tradeSystem.fromJson({});
+    currentEvent = null;
+
+    // 重置计时器
+    eventTimer?.cancel();
+    huntingTimer?.cancel();
+    _waterTimer?.cancel();
+
+    // 通知监听器更新UI
+    notifyListeners();
   }
 }
