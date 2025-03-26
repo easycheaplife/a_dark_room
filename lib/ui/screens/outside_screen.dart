@@ -3,7 +3,7 @@ import '../../engine/game_engine.dart';
 
 /// 户外屏幕 - 村庄和探索
 class OutsideScreen extends StatefulWidget {
-  const OutsideScreen({Key? key}) : super(key: key);
+  const OutsideScreen({super.key});
 
   @override
   State<OutsideScreen> createState() => _OutsideScreenState();
@@ -11,7 +11,7 @@ class OutsideScreen extends StatefulWidget {
 
 class _OutsideScreenState extends State<OutsideScreen> {
   final GameEngine _engine = GameEngine();
-  List<String> _logs = ['外面是一片森林。']; // 游戏日志
+  final List<String> _logs = []; // 游戏日志
   Map<String, int> _resources = {}; // 资源
 
   @override
@@ -47,107 +47,210 @@ class _OutsideScreenState extends State<OutsideScreen> {
     });
   }
 
-  // 探索森林
-  void _exploreForest() {
-    // 随机获取资源
-    double chance = (DateTime.now().millisecondsSinceEpoch % 100) / 100;
+  // 构建资源显示
+  Widget _buildResourceDisplay() {
+    final Map<String, List<String>> resourceGroups = {
+      '基础资源': ['wood', 'meat', 'water'],
+      '狩猎资源': ['fur', 'scales', 'teeth', 'leather'],
+      '制作材料': ['cloth', 'herbs', 'coal', 'iron', 'steel', 'sulphur'],
+      '食物': ['cured meat'],
+    };
 
-    if (chance < 0.5) {
-      _engine.updateGameState((state) {
-        state.addResource('wood', 2);
-      });
-      _addLog('找到了一些木头。');
-    } else if (chance < 0.7) {
-      _engine.updateGameState((state) {
-        state.addResource('fur', 1);
-      });
-      _addLog('捕获了一只小动物。');
-    } else if (chance < 0.8) {
-      _engine.updateGameState((state) {
-        state.addResource('meat', 1);
-      });
-      _addLog('获得了一些肉。');
-    } else {
-      _addLog('什么也没找到。');
-    }
-
-    _updateState();
-  }
-
-  // 返回房间
-  void _returnToRoom() {
-    _engine.updateGameState((state) {
-      state.currentLocation = 'room';
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _buildHeader(),
-        _buildOutsideView(),
-        _buildLogView(),
-        _buildActionButtons(),
-      ],
-    );
-  }
-
-  // 构建头部信息
-  Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.all(10),
-      color: Colors.black,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade900,
+        border: Border.all(color: Colors.grey.shade800),
+        borderRadius: BorderRadius.circular(4),
+      ),
       child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: resourceGroups.entries.map((group) {
+          final resources = group.value
+              .where((resource) => (_resources[resource] ?? 0) > 0)
+              .toList();
+
+          if (resources.isEmpty) return const SizedBox.shrink();
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '外部世界',
+                group.key,
                 style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
+                  color: Colors.grey.shade400,
+                  fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              IconButton(
-                icon: Icon(Icons.home, color: Colors.white),
-                onPressed: _returnToRoom,
-                tooltip: '返回房间',
+              Wrap(
+                spacing: 10,
+                children: resources.map((resource) {
+                  final storage =
+                      _engine.gameState!.getResourceStorage()[resource]!;
+                  final amount = storage['amount']!;
+                  final limit = storage['limit']!;
+                  final percentage = (amount / limit * 100).round();
+
+                  return Tooltip(
+                    message: '$resource: $amount/$limit',
+                    child: Text(
+                      '$resource: $amount',
+                      style: TextStyle(
+                        color: percentage >= 90 ? Colors.orange : Colors.white,
+                      ),
+                    ),
+                  );
+                }).toList(),
               ),
+              const SizedBox(height: 8),
             ],
-          ),
-          const SizedBox(height: 8),
-          _buildResourceBar(),
-        ],
+          );
+        }).toList(),
       ),
     );
   }
 
-  // 构建资源条
-  Widget _buildResourceBar() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.start,
-      children: [
-        _buildResourceIndicator('木头', _resources['wood'] ?? 0),
-        if (_resources['fur'] != null && _resources['fur']! > 0)
-          _buildResourceIndicator('毛皮', _resources['fur'] ?? 0),
-        if (_resources['meat'] != null && _resources['meat']! > 0)
-          _buildResourceIndicator('肉', _resources['meat'] ?? 0),
-      ],
+  // 构建日志视图
+  Widget _buildGameLog() {
+    return Container(
+      height: 150,
+      width: double.infinity,
+      color: Colors.black,
+      padding: const EdgeInsets.all(10),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade800),
+          color: Colors.black,
+        ),
+        child: ListView.builder(
+          itemCount: _logs.length,
+          itemBuilder: (context, index) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 5),
+              child: Text(
+                _logs[index],
+                style: TextStyle(
+                  color: index == _logs.length - 1 ? Colors.white : Colors.grey,
+                  fontSize: 14,
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
-  // 构建单个资源指示器
-  Widget _buildResourceIndicator(String name, int value) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 15),
-      child: Text(
-        '$name: $value',
-        style: TextStyle(
-          color: Colors.grey.shade300,
-          fontSize: 14,
+  // 构建狩猎按钮
+  Widget _buildHuntingButtons() {
+    if (_engine.gameState?.isHunting ?? false) {
+      return Column(
+        children: [
+          Text(
+            '正在狩猎: ${_engine.gameState!.huntingOutcomes[_engine.gameState!.currentHuntType]!['name']}',
+            style: const TextStyle(color: Colors.white),
+          ),
+          Text(
+            '剩余时间: ${_engine.gameState!.huntingTimeLeft}秒',
+            style: const TextStyle(color: Colors.white),
+          ),
+        ],
+      );
+    }
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: _engine.gameState!.huntingOutcomes.entries.map((entry) {
+        String huntType = entry.key;
+        Map<String, dynamic> config = entry.value;
+        bool hasRequiredWeapons = true;
+
+        if (config.containsKey('requires')) {
+          var requires = config['requires'] as Map<String, int>;
+          int weaponsLevel =
+              _engine.gameState!.room['buildings']?['weapons'] ?? 0;
+          hasRequiredWeapons = weaponsLevel >= (requires['weapons'] ?? 0);
+        }
+
+        return ElevatedButton(
+          onPressed: hasRequiredWeapons
+              ? () {
+                  if (_engine.gameState!.startHunting(huntType)) {
+                    _addLog('开始狩猎${config['name']}');
+                  }
+                }
+              : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.grey.shade800,
+            disabledBackgroundColor: Colors.grey.shade900,
+          ),
+          child: Text(config['name'] as String),
+        );
+      }).toList(),
+    );
+  }
+
+  // 修改主界面布局
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildResourceDisplay(),
+                    const SizedBox(height: 16),
+                    const Text(
+                      '狩猎',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildHuntingButtons(),
+                    const SizedBox(height: 16),
+                    _buildGameLog(),
+                  ],
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                border: Border(
+                  top: BorderSide(color: Colors.grey.shade900),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      _engine.updateGameState((state) {
+                        state.currentLocation = 'room';
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey.shade800,
+                    ),
+                    child: const Text('返回房间'),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -192,69 +295,6 @@ class _OutsideScreenState extends State<OutsideScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  // 构建日志视图
-  Widget _buildLogView() {
-    return Container(
-      height: 150,
-      width: double.infinity,
-      color: Colors.black,
-      padding: const EdgeInsets.all(10),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade800),
-          color: Colors.black,
-        ),
-        child: ListView.builder(
-          itemCount: _logs.length,
-          itemBuilder: (context, index) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 5),
-              child: Text(
-                _logs[index],
-                style: TextStyle(
-                  color: index == _logs.length - 1 ? Colors.white : Colors.grey,
-                  fontSize: 14,
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  // 构建动作按钮
-  Widget _buildActionButtons() {
-    return Container(
-      width: double.infinity,
-      color: Colors.black,
-      padding: const EdgeInsets.all(10),
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: [
-          _buildActionButton('探索森林', true, _exploreForest),
-          _buildActionButton('返回房间', true, _returnToRoom),
-        ],
-      ),
-    );
-  }
-
-  // 构建单个动作按钮
-  Widget _buildActionButton(String text, bool enabled, VoidCallback onPressed) {
-    return ElevatedButton(
-      onPressed: enabled ? onPressed : null,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.grey.shade800,
-        disabledBackgroundColor: Colors.grey.shade900,
-        foregroundColor: Colors.white,
-        disabledForegroundColor: Colors.grey,
-      ),
-      child: Text(text),
     );
   }
 }

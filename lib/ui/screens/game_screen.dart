@@ -5,7 +5,7 @@ import 'outside_screen.dart';
 
 /// 游戏主屏幕，根据游戏状态显示不同的游戏区域
 class GameScreen extends StatefulWidget {
-  const GameScreen({Key? key}) : super(key: key);
+  const GameScreen({super.key});
 
   @override
   State<GameScreen> createState() => _GameScreenState();
