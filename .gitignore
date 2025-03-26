@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Miscellaneous
 *.class
 *.log
@@ -44,8 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
 adarkroom
-=======
 # See https://www.dartlang.org/guides/libraries/private-files
 
 # Files and directories created by pub
@@ -73,4 +72,5 @@ doc/api/
 
 .flutter-plugins
 .flutter-plugins-dependencies
->>>>>>> c8e8fe4b3d3d07be35ecfba98d4acf46b64cb9a5
+
+production/web/node_modules/
