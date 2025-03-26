@@ -1,39 +1,42 @@
 import 'package:flutter/material.dart';
 import '../../engine/game_engine.dart';
+import '../../models/game_state.dart';
 
 /// 户外屏幕 - 村庄和探索
 class OutsideScreen extends StatefulWidget {
-  const OutsideScreen({super.key});
+  final GameState gameState;
+
+  const OutsideScreen({
+    super.key,
+    required this.gameState,
+  });
 
   @override
   State<OutsideScreen> createState() => _OutsideScreenState();
 }
 
 class _OutsideScreenState extends State<OutsideScreen> {
-  final GameEngine _engine = GameEngine();
   final List<String> _logs = []; // 游戏日志
   Map<String, int> _resources = {}; // 资源
 
   @override
   void initState() {
     super.initState();
-    _engine.stateChangeNotifier.addListener(_updateState);
+    widget.gameState.addListener(_updateState);
     _updateState();
   }
 
   @override
   void dispose() {
-    _engine.stateChangeNotifier.removeListener(_updateState);
+    widget.gameState.removeListener(_updateState);
     super.dispose();
   }
 
   // 更新状态
   void _updateState() {
-    if (_engine.gameState != null) {
-      setState(() {
-        _resources = Map<String, int>.from(_engine.gameState!.resources);
-      });
-    }
+    setState(() {
+      _resources = Map<String, int>.from(widget.gameState.resources);
+    });
   }
 
   // 添加日志
@@ -87,7 +90,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
                 spacing: 10,
                 children: resources.map((resource) {
                   final storage =
-                      _engine.gameState!.getResourceStorage()[resource]!;
+                      widget.gameState.getResourceStorage()[resource]!;
                   final amount = storage['amount']!;
                   final limit = storage['limit']!;
                   final percentage = (amount / limit * 100).round();
@@ -145,15 +148,15 @@ class _OutsideScreenState extends State<OutsideScreen> {
 
   // 构建狩猎按钮
   Widget _buildHuntingButtons() {
-    if (_engine.gameState?.isHunting ?? false) {
+    if (widget.gameState.isHunting) {
       return Column(
         children: [
           Text(
-            '正在狩猎: ${_engine.gameState!.huntingOutcomes[_engine.gameState!.currentHuntType]!['name']}',
+            '正在狩猎: ${widget.gameState.huntingOutcomes[widget.gameState.currentHuntType]!['name']}',
             style: const TextStyle(color: Colors.white),
           ),
           Text(
-            '剩余时间: ${_engine.gameState!.huntingTimeLeft}秒',
+            '剩余时间: ${widget.gameState.huntingTimeLeft}秒',
             style: const TextStyle(color: Colors.white),
           ),
         ],
@@ -163,7 +166,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
     return Wrap(
       spacing: 10,
       runSpacing: 10,
-      children: _engine.gameState!.huntingOutcomes.entries.map((entry) {
+      children: widget.gameState.huntingOutcomes.entries.map((entry) {
         String huntType = entry.key;
         Map<String, dynamic> config = entry.value;
         bool hasRequiredWeapons = true;
@@ -171,14 +174,14 @@ class _OutsideScreenState extends State<OutsideScreen> {
         if (config.containsKey('requires')) {
           var requires = config['requires'] as Map<String, int>;
           int weaponsLevel =
-              _engine.gameState!.room['buildings']?['weapons'] ?? 0;
+              widget.gameState.room['buildings']?['weapons'] ?? 0;
           hasRequiredWeapons = weaponsLevel >= (requires['weapons'] ?? 0);
         }
 
         return ElevatedButton(
           onPressed: hasRequiredWeapons
               ? () {
-                  if (_engine.gameState!.startHunting(huntType)) {
+                  if (widget.gameState.startHunting(huntType)) {
                     _addLog('开始狩猎${config['name']}');
                   }
                 }
@@ -186,10 +189,36 @@ class _OutsideScreenState extends State<OutsideScreen> {
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.grey.shade800,
             disabledBackgroundColor: Colors.grey.shade900,
+            foregroundColor: Colors.white,
+            disabledForegroundColor: Colors.grey,
+            minimumSize: const Size(120, 40),
           ),
-          child: Text(config['name'] as String),
+          child: Text(
+            config['name'] as String,
+            style: const TextStyle(fontSize: 14),
+          ),
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildGatheringButtons() {
+    return Column(
+      children: [
+        ElevatedButton(
+          onPressed: widget.gameState.isGatheringWater
+              ? null
+              : () => widget.gameState.gatherWater(),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.grey.shade800,
+            disabledBackgroundColor: Colors.grey.shade900,
+          ),
+          child: Text(
+            widget.gameState.isGatheringWater ? '正在收集水...' : '收集水',
+            style: const TextStyle(color: Colors.white),
+          ),
+        ),
+      ],
     );
   }
 
@@ -220,6 +249,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
                     const SizedBox(height: 8),
                     _buildHuntingButtons(),
                     const SizedBox(height: 16),
+                    _buildGatheringButtons(),
                     _buildGameLog(),
                   ],
                 ),
@@ -238,59 +268,19 @@ class _OutsideScreenState extends State<OutsideScreen> {
                 children: [
                   ElevatedButton(
                     onPressed: () {
-                      _engine.updateGameState((state) {
-                        state.currentLocation = 'room';
-                      });
+                      widget.gameState.currentLocation = 'room';
+                      widget.gameState.notifyListeners();
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.grey.shade800,
                     ),
-                    child: const Text('返回房间'),
+                    child: const Text(
+                      '返回房间',
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // 构建外部视图
-  Widget _buildOutsideView() {
-    return Expanded(
-      flex: 2,
-      child: Container(
-        width: double.infinity,
-        color: Colors.black,
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.forest,
-                  color: Colors.green,
-                  size: 60,
-                ),
-                const SizedBox(width: 20),
-                Icon(
-                  Icons.home,
-                  color: Colors.brown,
-                  size: 60,
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Text(
-              '森林环绕着一个小村庄。',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),

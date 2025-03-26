@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
-import '../../engine/game_engine.dart';
+import '../../models/game_state.dart';
 import '../../models/event_system.dart';
 
 /// 房间屏幕 - 游戏的起始区域
 class RoomScreen extends StatefulWidget {
-  const RoomScreen({super.key});
+  final GameState gameState;
+
+  const RoomScreen({
+    super.key,
+    required this.gameState,
+  });
 
   @override
   State<RoomScreen> createState() => _RoomScreenState();
 }
 
 class _RoomScreenState extends State<RoomScreen> {
-  final GameEngine _engine = GameEngine();
   int _fireLevel = 0; // 火堆等级
   String _temperature = 'cold'; // 温度
   final List<String> _logs = ['一个黑暗的房间。']; // 游戏日志
@@ -25,43 +29,31 @@ class _RoomScreenState extends State<RoomScreen> {
   @override
   void initState() {
     super.initState();
-    _engine.stateChangeNotifier.addListener(_updateState);
-    _updateState();
-
     // 添加初始金钱
-    _engine.updateGameState((state) {
-      if (!state.resources.containsKey('money')) {
-        state.resources['money'] = 100; // 给玩家一些初始金钱
-      }
-    });
+    if (!widget.gameState.resources.containsKey('money')) {
+      widget.gameState.resources['money'] = 100; // 给玩家一些初始金钱
+    }
 
     // 添加事件检查
-    _engine.gameState?.initEventSystem();
-  }
-
-  @override
-  void dispose() {
-    _engine.stateChangeNotifier.removeListener(_updateState);
-    super.dispose();
+    widget.gameState.initEventSystem();
+    _updateState();
   }
 
   // 更新状态
   void _updateState() {
-    if (_engine.gameState != null) {
-      setState(() {
-        _fireLevel = _engine.gameState!.room['fire'] as int;
-        _temperature = _engine.gameState!.room['temperature'] as String;
-        _resources = Map<String, int>.from(_engine.gameState!.resources);
-        _buildings =
-            Map<String, int>.from(_engine.gameState!.room['buildings'] ?? {});
-        _population = Map<String, dynamic>.from(_engine.gameState!.population);
+    setState(() {
+      _fireLevel = widget.gameState.room['fire'] as int;
+      _temperature = widget.gameState.room['temperature'] as String;
+      _resources = Map<String, int>.from(widget.gameState.resources);
+      _buildings =
+          Map<String, int>.from(widget.gameState.room['buildings'] ?? {});
+      _population = Map<String, dynamic>.from(widget.gameState.population);
 
-        // 检查是否有新事件
-        if (_engine.gameState!.currentEvent != null) {
-          _showEventDialog();
-        }
-      });
-    }
+      // 检查是否有新事件
+      if (widget.gameState.currentEvent != null) {
+        _showEventDialog();
+      }
+    });
   }
 
   // 添加日志
@@ -77,81 +69,71 @@ class _RoomScreenState extends State<RoomScreen> {
 
   // 生火
   void _lightFire() {
-    if (_engine.gameState != null) {
-      bool hasWood = _engine.gameState!.useResource('wood', 5);
-      if (hasWood) {
-        _engine.updateGameState((state) {
-          state.room['fire'] = 1;
-          state.room['temperature'] = 'warm';
-        });
-        _addLog('火堆点燃了。房间变暖了。');
-      } else {
-        _addLog('没有足够的木头。');
-      }
+    bool hasWood = widget.gameState.useResource('wood', 5);
+    if (hasWood) {
+      widget.gameState.room['fire'] = 1;
+      widget.gameState.room['temperature'] = 'warm';
+      widget.gameState.notifyListeners();
+      _addLog('火堆点燃了。房间变暖了。');
+    } else {
+      _addLog('没有足够的木头。');
     }
   }
 
   // 添加木头
   void _addWood() {
-    if (_engine.gameState != null) {
-      if (_fireLevel == 0) {
-        _addLog('没有火堆。');
-        return;
+    if (_fireLevel == 0) {
+      _addLog('没有火堆。');
+      return;
+    }
+
+    bool hasWood = widget.gameState.useResource('wood', 1);
+    if (hasWood) {
+      int currentFire = widget.gameState.room['fire'] as int;
+      if (currentFire < 3) {
+        widget.gameState.room['fire'] = currentFire + 1;
       }
 
-      bool hasWood = _engine.gameState!.useResource('wood', 1);
-      if (hasWood) {
-        _engine.updateGameState((state) {
-          int currentFire = state.room['fire'] as int;
-          if (currentFire < 3) {
-            state.room['fire'] = currentFire + 1;
-          }
-
-          if (currentFire == 1) {
-            _addLog('火堆燃烧更旺了。');
-          } else if (currentFire == 2) {
-            _addLog('火堆熊熊燃烧。');
-            state.room['temperature'] = 'hot';
-          }
-        });
-      } else {
-        _addLog('没有木头。');
+      if (currentFire == 1) {
+        _addLog('火堆燃烧更旺了。');
+      } else if (currentFire == 2) {
+        _addLog('火堆熊熊燃烧。');
+        widget.gameState.room['temperature'] = 'hot';
       }
+      widget.gameState.notifyListeners();
+    } else {
+      _addLog('没有木头。');
     }
   }
 
   // 收集木头
   void _gatherWood() {
-    _engine.updateGameState((state) {
-      state.addResource('wood', 100);
-    });
+    widget.gameState.addResource('wood', 100);
+    widget.gameState.notifyListeners();
     _addLog('收集了一些木头。');
   }
 
   // 建造建筑
   void _buildStructure(String buildingId) {
-    if (_engine.gameState != null) {
-      bool success = _engine.gameState!.buildStructure(buildingId);
-      if (success) {
-        String notification = _engine.gameState!
-            .availableBuildings[buildingId]!['notification'] as String;
-        _addLog(notification);
+    bool success = widget.gameState.buildStructure(buildingId);
+    if (success) {
+      String notification = widget
+          .gameState.availableBuildings[buildingId]!['notification'] as String;
+      _addLog(notification);
 
-        // 检查是否解锁了外部世界
-        if (buildingId == 'trap' && !_engine.gameState!.outsideUnlocked) {
-          _engine.updateGameState((state) {
-            state.outsideUnlocked = true;
-          });
-          _addLog('可以探索外面的世界了。');
-        }
-
-        // 更新建筑和资源显示
-        _updateState();
-      } else {
-        Map<String, dynamic> cost = _engine.gameState!
-            .availableBuildings[buildingId]!['cost'] as Map<String, dynamic>;
-        _addLog('资源不足。需要: ${_formatCost(cost)}');
+      // 检查是否解锁了外部世界
+      if (buildingId == 'trap' && !widget.gameState.outsideUnlocked) {
+        widget.gameState.outsideUnlocked = true;
+        widget.gameState.notifyListeners();
+        _addLog('可以探索外面的世界了。');
       }
+
+      // 更新建筑和资源显示
+      _updateState();
+    } else {
+      Map<String, dynamic> cost = widget.gameState
+          .availableBuildings[buildingId]!['cost'] as Map<String, dynamic>;
+      _addLog('资源不足。需要: ${_formatCost(cost)}');
     }
   }
 
@@ -204,7 +186,7 @@ class _RoomScreenState extends State<RoomScreen> {
                 spacing: 10,
                 children: resources.map((resource) {
                   final storage =
-                      _engine.gameState!.getResourceStorage()[resource]!;
+                      widget.gameState.getResourceStorage()[resource]!;
                   final amount = storage['amount']!;
                   final limit = storage['limit']!;
                   final percentage = (amount / limit * 100).round();
@@ -254,14 +236,14 @@ class _RoomScreenState extends State<RoomScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          ..._engine.gameState!.villagerTypes.entries.map((entry) {
+          ...widget.gameState.villagerTypes.entries.map((entry) {
             final type = entry.key;
             final info = entry.value;
             final count = _population['workers']?[type] ?? 0;
             if (count == 0) return const SizedBox.shrink();
 
             final efficiency =
-                _engine.gameState!.calculateVillagerEfficiency(type);
+                widget.gameState.calculateVillagerEfficiency(type);
             return Padding(
               padding: const EdgeInsets.only(bottom: 4),
               child: Row(
@@ -298,20 +280,26 @@ class _RoomScreenState extends State<RoomScreen> {
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildFireStatus(),
-                    const SizedBox(height: 16),
-                    _buildResourceDisplay(),
-                    const SizedBox(height: 16),
-                    _buildWorkerStatus(),
-                    const SizedBox(height: 16),
-                    _buildBuildingsGrid(),
-                    const SizedBox(height: 16),
-                    _buildGameLog(),
-                  ],
-                ),
+                child: _showBuildingsMenu
+                    ? _buildBuildingsMenu()
+                    : _showVillagersMenu
+                        ? _buildVillagersMenu()
+                        : _showTradeMenu
+                            ? _buildTradeMenu()
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildFireStatus(),
+                                  const SizedBox(height: 16),
+                                  _buildResourceDisplay(),
+                                  const SizedBox(height: 16),
+                                  _buildWorkerStatus(),
+                                  const SizedBox(height: 16),
+                                  _buildBuildingsGrid(),
+                                  const SizedBox(height: 16),
+                                  _buildGameLog(),
+                                ],
+                              ),
               ),
             ),
             Container(
@@ -398,9 +386,9 @@ class _RoomScreenState extends State<RoomScreen> {
 
     _buildings.forEach((buildingId, count) {
       if (count > 0 &&
-          _engine.gameState?.availableBuildings[buildingId] != null) {
-        String name = _engine.gameState!.availableBuildings[buildingId]!['name']
-            as String;
+          widget.gameState.availableBuildings[buildingId] != null) {
+        String name =
+            widget.gameState.availableBuildings[buildingId]!['name'] as String;
         buildingIcons.add(
           Tooltip(
             message: '$name: $count',
@@ -514,13 +502,8 @@ class _RoomScreenState extends State<RoomScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _showBuildingsMenu
-              ? _buildBuildingsMenu()
-              : _showVillagersMenu
-                  ? _buildVillagersMenu()
-                  : _showTradeMenu
-                      ? _buildTradeMenu()
-                      : _buildMainActionButtons(),
+          if (!_showBuildingsMenu && !_showVillagersMenu && !_showTradeMenu)
+            _buildMainActionButtons(),
           const SizedBox(height: 8),
         ],
       ),
@@ -529,16 +512,25 @@ class _RoomScreenState extends State<RoomScreen> {
 
   // 构建主要动作按钮
   Widget _buildMainActionButtons() {
-    bool outsideUnlocked = _engine.gameState?.outsideUnlocked ?? false;
-    bool storeOpened = _engine.gameState?.storeOpened ?? false;
+    bool outsideUnlocked = widget.gameState.outsideUnlocked;
+    bool storeOpened = widget.gameState.storeOpened;
 
     return Wrap(
       spacing: 10,
       runSpacing: 10,
       children: [
-        _buildActionButton('生火', _fireLevel == 0, _lightFire),
-        _buildActionButton('添加木头', _fireLevel > 0, _addWood),
-        _buildActionButton('收集木头', true, _gatherWood),
+        _buildActionButton('生火', _fireLevel == 0, () {
+          _lightFire();
+          _updateState();
+        }),
+        _buildActionButton('添加木头', _fireLevel > 0, () {
+          _addWood();
+          _updateState();
+        }),
+        _buildActionButton('收集木头', true, () {
+          _gatherWood();
+          _updateState();
+        }),
         _buildActionButton('建造', _fireLevel > 0, () {
           setState(() {
             _showBuildingsMenu = true;
@@ -563,10 +555,32 @@ class _RoomScreenState extends State<RoomScreen> {
           }),
         if (outsideUnlocked)
           _buildActionButton('外出', true, () {
-            _engine.updateGameState((state) {
-              state.currentLocation = 'outside';
+            setState(() {
+              widget.gameState.currentLocation = 'outside';
+              widget.gameState.notifyListeners();
             });
           }),
+        _buildActionButton('保存', true, () async {
+          try {
+            await widget.gameState.saveGame();
+            _addLog('游戏已保存。');
+          } catch (e) {
+            _addLog('保存失败：$e');
+          }
+        }),
+        _buildActionButton('读取', true, () async {
+          try {
+            bool success = await widget.gameState.loadGame();
+            if (success) {
+              _addLog('游戏已读取。');
+              _updateState();
+            } else {
+              _addLog('没有找到存档。');
+            }
+          } catch (e) {
+            _addLog('读取失败：$e');
+          }
+        }),
       ],
     );
   }
@@ -577,15 +591,15 @@ class _RoomScreenState extends State<RoomScreen> {
     String name = building['name'] as String;
     String description = building['description'] as String;
     Map<String, dynamic> cost = building['cost'] as Map<String, dynamic>;
-    int currentLevel = _engine.gameState!.buildingLevels[id] ?? 1;
-    bool canUpgrade = _engine.gameState!.canUpgradeBuilding(id);
+    int currentLevel = widget.gameState.buildingLevels[id] ?? 1;
+    bool canUpgrade = widget.gameState.canUpgradeBuilding(id);
     int count = _buildings[id] ?? 0;
 
     // 获取维护成本
     String maintenanceText = '';
-    if (_engine.gameState!.buildingMaintenance.containsKey(id)) {
+    if (widget.gameState.buildingMaintenance.containsKey(id)) {
       Map<String, dynamic> maintenance =
-          _engine.gameState!.buildingMaintenance[id]!;
+          widget.gameState.buildingMaintenance[id]!;
       List<String> maintenanceCosts = [];
       maintenance.forEach((resource, amount) {
         if (resource != 'interval') {
@@ -669,7 +683,7 @@ class _RoomScreenState extends State<RoomScreen> {
               child: ElevatedButton(
                 onPressed: canUpgrade
                     ? () {
-                        if (_engine.gameState!.upgradeBuilding(id)) {
+                        if (widget.gameState.upgradeBuilding(id)) {
                           _addLog('升级了$name到${currentLevel + 1}级。');
                           _updateState();
                         }
@@ -694,154 +708,145 @@ class _RoomScreenState extends State<RoomScreen> {
   Widget _buildBuildingsMenu() {
     List<Widget> buildingButtons = [];
 
-    if (_engine.gameState != null) {
-      _engine.gameState!.availableBuildings.forEach((id, building) {
-        bool canBuild = _engine.gameState!.canBuild(id);
+    if (widget.gameState != null) {
+      widget.gameState.availableBuildings.forEach((id, building) {
+        bool canBuild = widget.gameState.canBuild(id);
         buildingButtons.add(_buildBuildingMenuItem(id, building, canBuild));
       });
     }
 
-    return Container(
-      constraints: const BoxConstraints(maxHeight: 300),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ...buildingButtons,
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _showBuildingsMenu = false;
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey.shade800,
-                minimumSize: const Size(double.infinity, 40),
-              ),
-              child: const Text('返回'),
-            ),
-          ],
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ...buildingButtons,
+        const SizedBox(height: 16),
+        ElevatedButton(
+          onPressed: () {
+            setState(() {
+              _showBuildingsMenu = false;
+            });
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.grey.shade800,
+            minimumSize: const Size(double.infinity, 40),
+          ),
+          child: const Text('返回'),
         ),
-      ),
+      ],
     );
   }
 
   // 构建村民菜单
   Widget _buildVillagersMenu() {
-    return Container(
-      constraints: const BoxConstraints(maxHeight: 400),
-      child: SingleChildScrollView(
-        child: Column(
-          children: [
-            // 显示村民状态
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade900,
-                border: Border.all(color: Colors.grey.shade800),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 显示村民状态
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade900,
+            border: Border.all(color: Colors.grey.shade800),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '总人口: ${_population['total'] ?? 0}/${_population['max'] ?? 0}',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                      Text(
-                        '幸福度: ${_population['happiness']?.toStringAsFixed(0) ?? 100}%',
-                        style: TextStyle(
-                          color: _getHappinessColor(
-                              _population['happiness'] ?? 100),
-                        ),
-                      ),
-                    ],
+                  Text(
+                    '总人口: ${_population['total'] ?? 0}/${_population['max'] ?? 0}',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  Text(
+                    '幸福度: ${_population['happiness']?.toStringAsFixed(0) ?? 100}%',
+                    style: TextStyle(
+                      color:
+                          _getHappinessColor(_population['happiness'] ?? 100),
+                    ),
                   ),
                 ],
               ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        // 显示可招募的村民
+        ...widget.gameState.villagerTypes.entries.map((entry) {
+          final type = entry.key;
+          final info = entry.value;
+          final count = _population['workers']?[type] ?? 0;
+
+          // 检查是否可以招募
+          bool canRecruit = widget.gameState.canRecruitVillager(type);
+
+          return Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 10),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade900,
+              border: Border.all(
+                color: canRecruit ? Colors.grey.shade700 : Colors.grey.shade800,
+              ),
+              borderRadius: BorderRadius.circular(4),
             ),
-            const SizedBox(height: 10),
-            // 显示可招募的村民
-            ..._engine.gameState!.villagerTypes.entries.map((entry) {
-              final type = entry.key;
-              final info = entry.value;
-              final count = _population['workers']?[type] ?? 0;
-
-              // 检查是否可以招募
-              bool canRecruit = _engine.gameState!.canRecruitVillager(type);
-
-              return Container(
-                width: double.infinity,
-                margin: const EdgeInsets.only(bottom: 10),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade900,
-                  border: Border.all(
-                    color: canRecruit
-                        ? Colors.grey.shade700
-                        : Colors.grey.shade800,
-                  ),
-                  borderRadius: BorderRadius.circular(4),
+            child: ListTile(
+              title: Text(
+                '$type ($count)',
+                style: TextStyle(
+                  color: canRecruit ? Colors.white : Colors.grey,
+                  fontWeight: FontWeight.bold,
                 ),
-                child: ListTile(
-                  title: Text(
-                    '$type ($count)',
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    info['description'],
                     style: TextStyle(
-                      color: canRecruit ? Colors.white : Colors.grey,
-                      fontWeight: FontWeight.bold,
+                      color: canRecruit
+                          ? Colors.grey.shade300
+                          : Colors.grey.shade600,
+                      fontSize: 12,
                     ),
                   ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        info['description'],
-                        style: TextStyle(
-                          color: canRecruit
-                              ? Colors.grey.shade300
-                              : Colors.grey.shade600,
-                          fontSize: 12,
-                        ),
-                      ),
-                      Text(
-                        '需要: ${_formatCost(info['cost'] as Map<String, dynamic>)}',
-                        style: TextStyle(
-                          color: canRecruit
-                              ? Colors.grey.shade400
-                              : Colors.grey.shade700,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    '需要: ${_formatCost(info['cost'] as Map<String, dynamic>)}',
+                    style: TextStyle(
+                      color: canRecruit
+                          ? Colors.grey.shade400
+                          : Colors.grey.shade700,
+                      fontSize: 12,
+                    ),
                   ),
-                  onTap: canRecruit
-                      ? () {
-                          if (_engine.gameState!.recruitVillager(type)) {
-                            _addLog('招募了一个$type。');
-                          }
-                        }
-                      : null,
-                ),
-              );
-            }),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _showVillagersMenu = false;
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey.shade800,
+                ],
               ),
-              child: const Text('返回'),
+              onTap: canRecruit
+                  ? () {
+                      if (widget.gameState.recruitVillager(type)) {
+                        _addLog('招募了一个$type。');
+                      }
+                    }
+                  : null,
             ),
-          ],
+          );
+        }),
+        const SizedBox(height: 16),
+        ElevatedButton(
+          onPressed: () {
+            setState(() {
+              _showVillagersMenu = false;
+            });
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.grey.shade800,
+            minimumSize: const Size(double.infinity, 40),
+          ),
+          child: const Text('返回'),
         ),
-      ),
+      ],
     );
   }
 
@@ -882,9 +887,9 @@ class _RoomScreenState extends State<RoomScreen> {
 
   // 添加事件对话框显示
   void _showEventDialog() {
-    if (_engine.gameState?.currentEvent == null) return;
+    if (widget.gameState?.currentEvent == null) return;
 
-    GameEvent event = _engine.gameState!.currentEvent!;
+    GameEvent event = widget.gameState.currentEvent!;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -905,14 +910,14 @@ class _RoomScreenState extends State<RoomScreen> {
             if (event.choices != null) ...[
               const SizedBox(height: 16),
               ...event.choices!.map((choice) {
-                bool canChoose = _engine.gameState!.eventSystem
-                    .canChoose(choice, _engine.gameState!);
+                bool canChoose = widget.gameState.eventSystem
+                    .canChoose(choice, widget.gameState!);
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: ElevatedButton(
                     onPressed: canChoose
                         ? () {
-                            _engine.gameState!.makeEventChoice(choice);
+                            widget.gameState.makeEventChoice(choice);
                             Navigator.of(context).pop();
                           }
                         : null,
@@ -967,14 +972,14 @@ class _RoomScreenState extends State<RoomScreen> {
               ),
             ),
             const SizedBox(height: 10),
-            ..._engine.gameState!.tradeSystem.tradeItems.entries.map((entry) {
+            ...widget.gameState.tradeSystem.tradeItems.entries.map((entry) {
               final itemId = entry.key;
               final item = entry.value;
               final currentAmount = _resources[itemId] ?? 0;
               final buyPrice =
-                  _engine.gameState!.tradeSystem.calculateBuyPrice(itemId, 1);
+                  widget.gameState.tradeSystem.calculateBuyPrice(itemId, 1);
               final sellPrice =
-                  _engine.gameState!.tradeSystem.calculateSellPrice(itemId, 1);
+                  widget.gameState.tradeSystem.calculateSellPrice(itemId, 1);
 
               return Container(
                 width: double.infinity,
@@ -1029,9 +1034,9 @@ class _RoomScreenState extends State<RoomScreen> {
                       IconButton(
                         icon: const Icon(Icons.remove_circle_outline),
                         color: Colors.red.shade300,
-                        onPressed: _engine.gameState!.canSell(itemId, 1)
+                        onPressed: widget.gameState.canSell(itemId, 1)
                             ? () {
-                                if (_engine.gameState!.sellItem(itemId, 1)) {
+                                if (widget.gameState.sellItem(itemId, 1)) {
                                   _addLog('卖出了1个${item.name}');
                                   _updateState();
                                 }
@@ -1041,9 +1046,9 @@ class _RoomScreenState extends State<RoomScreen> {
                       IconButton(
                         icon: const Icon(Icons.add_circle_outline),
                         color: Colors.green.shade300,
-                        onPressed: _engine.gameState!.canBuy(itemId, 1)
+                        onPressed: widget.gameState.canBuy(itemId, 1)
                             ? () {
-                                if (_engine.gameState!.buyItem(itemId, 1)) {
+                                if (widget.gameState.buyItem(itemId, 1)) {
                                   _addLog('购买了1个${item.name}');
                                   _updateState();
                                 }

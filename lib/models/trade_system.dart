@@ -57,6 +57,8 @@ class TradeSystem {
 
   Map<String, int> currentPrices = {};
   DateTime lastPriceUpdate = DateTime.now();
+  Map<String, List<double>> priceHistory = {};
+  List<Map<String, dynamic>> tradeHistory = [];
 
   // 更新价格
   void updatePrices() {
@@ -85,5 +87,21 @@ class TradeSystem {
             0.7 *
             amount)
         .round();
+  }
+
+  // 转换为JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'lastPriceUpdate': lastPriceUpdate.toIso8601String(),
+      'priceHistory': priceHistory,
+      'tradeHistory': tradeHistory,
+    };
+  }
+
+  // 从JSON加载
+  void fromJson(Map<String, dynamic> json) {
+    lastPriceUpdate = DateTime.parse(json['lastPriceUpdate']);
+    priceHistory = Map<String, List<double>>.from(json['priceHistory']);
+    tradeHistory = List<Map<String, dynamic>>.from(json['tradeHistory']);
   }
 }

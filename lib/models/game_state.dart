@@ -1,9 +1,11 @@
-/// 游戏状态管理类，负责处理游戏的核心逻辑和数据
+// 游戏状态管理类，负责处理游戏的核心逻辑和数据
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'event_system.dart';
 import 'trade_system.dart';
 import 'dart:math';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class GameState extends ChangeNotifier {
   // 基本状态
@@ -47,103 +49,117 @@ class GameState extends ChangeNotifier {
 
   // 建筑定义
   final Map<String, Map<String, dynamic>> availableBuildings = {
-    // 基础建筑
     'trap': {
       'name': '陷阱',
-      'description': '捕捉小型猎物。',
+      'description': '捕捉野生动物',
       'cost': {'wood': 10},
-      'notification': '设置了陷阱。'
+      'notification': '设置了陷阱。',
     },
     'cart': {
-      'name': '手推车',
-      'description': '增加搬运能力。',
+      'name': '货车',
+      'description': '增加携带容量',
       'cost': {'wood': 30},
-      'notification': '建造了一个手推车。'
+      'notification': '货车可以携带更多物资了。',
+      'effects': {'storage': 50},
     },
     'hut': {
       'name': '小屋',
-      'description': '为村民提供住所。',
-      'cost': {'wood': 100},
-      'notification': '建造了一个小屋，可以提供避风港。'
-    },
-
-    // 生产建筑
-    'lodge': {
-      'name': '狩猎营地',
-      'description': '让狩猎者更有效率。',
-      'cost': {'wood': 200, 'fur': 10, 'meat': 5},
-      'notification': '建造了狩猎营地，狩猎效率提升。'
-    },
-    'trading_post': {
-      'name': '交易站',
-      'description': '允许与商人进行交易',
+      'description': '为村民提供住所',
       'cost': {
         'wood': 100,
         'fur': 10,
       },
-      'notification': '建造了交易站，可以和商人交易了。',
+      'notification': '建造了一个小屋。',
+      'effects': {'population': 1},
+    },
+    'lodge': {
+      'name': '猎人小屋',
+      'description': '训练熟练的猎人',
+      'cost': {
+        'wood': 200,
+        'fur': 10,
+        'meat': 5,
+      },
+      'notification': '猎人有了栖身之所。',
+      'requires': {
+        'buildings': {'hut': 1}
+      },
+    },
+    'trading_post': {
+      'name': '交易站',
+      'description': '与商人交易物资',
+      'cost': {
+        'wood': 100,
+        'fur': 10,
+      },
+      'notification': '商人可以在这里交易了。',
     },
     'tannery': {
       'name': '制革厂',
-      'description': '将动物皮转化为皮革。',
-      'cost': {'wood': 500, 'fur': 50},
-      'notification': '建造了制革厂。'
+      'description': '将毛皮制成皮革',
+      'cost': {
+        'wood': 100,
+        'fur': 50,
+      },
+      'notification': '皮革工人开始工作了。',
+      'requires': {
+        'buildings': {'trading_post': 1}
+      },
     },
     'smokehouse': {
       'name': '熏肉房',
-      'description': '制作熏肉保存食物。',
-      'cost': {'wood': 600, 'meat': 50},
-      'notification': '建造了熏肉房，可以保存食物。'
+      'description': '保存肉类',
+      'cost': {
+        'wood': 100,
+        'meat': 50,
+      },
+      'notification': '肉可以储存更久了。',
+      'effects': {'meat_storage': 50},
     },
     'workshop': {
       'name': '工坊',
-      'description': '制作先进工具。',
-      'cost': {'wood': 800, 'leather': 100, 'scales': 10},
-      'notification': '建造了工坊，可以制作更复杂的东西。'
-    },
-
-    // 新增建筑
-    'mine': {
-      'name': '矿井',
-      'description': '开采铁矿和煤炭。',
-      'cost': {'wood': 300, 'leather': 50},
-      'notification': '建造了矿井，可以开采矿物。',
-      'requires': {'workshop': 1} // 需要先建造工坊
-    },
-    'armoury': {
-      'name': '军械库',
-      'description': '制作武器和防具。',
-      'cost': {'wood': 600, 'steel': 50, 'leather': 100},
-      'notification': '建造了军械库，可以制作武器。',
-      'requires': {'workshop': 1}
-    },
-    'storehouse': {
-      'name': '仓库',
-      'description': '增加资源存储上限。',
-      'cost': {'wood': 400, 'leather': 50},
-      'notification': '建造了仓库，可以存储更多资源。'
-    },
-    'watermill': {
-      'name': '水磨',
-      'description': '提高资源加工效率。',
-      'cost': {'wood': 500, 'iron': 50, 'leather': 50},
-      'notification': '建造了水磨，加工效率提升。',
-      'requires': {'workshop': 1}
+      'description': '制作高级工具',
+      'cost': {
+        'wood': 200,
+        'leather': 20,
+      },
+      'notification': '工匠有了工作的地方。',
+      'requires': {
+        'buildings': {'tannery': 1}
+      },
     },
     'steelworks': {
       'name': '炼钢厂',
-      'description': '将铁转化为钢。',
-      'cost': {'iron': 100, 'coal': 100, 'leather': 50},
-      'notification': '建造了炼钢厂，可以生产钢材。',
-      'requires': {'mine': 1}
+      'description': '将铁转化为钢',
+      'cost': {
+        'wood': 300,
+        'iron': 100,
+        'coal': 50,
+      },
+      'notification': '钢铁生产开始了。',
+      'requires': {
+        'buildings': {'workshop': 1}
+      },
     },
-    'school': {
-      'name': '学校',
-      'description': '提高村民工作效率。',
-      'cost': {'wood': 600, 'leather': 100, 'steel': 50},
-      'notification': '建造了学校，村民可以学习新知识。',
-      'requires': {'workshop': 1}
-    }
+    'armoury': {
+      'name': '军械库',
+      'description': '制造武器和盔甲',
+      'cost': {
+        'wood': 400,
+        'steel': 50,
+      },
+      'notification': '可以制造更好的武器了。',
+      'requires': {
+        'buildings': {'steelworks': 1}
+      },
+    },
+    'well': {
+      'name': '水井',
+      'description': '提供稳定的水源',
+      'cost': {'wood': 50},
+      'notification': '水井建好了。',
+      'effects': {'water_production': 1}, // 每次产出1单位水
+    },
   };
 
   // 房间状态
@@ -214,7 +230,7 @@ class GameState extends ChangeNotifier {
   Map<String, int> buildingLevels = {};
 
   // 建筑维护成本
-  final Map<String, Map<String, dynamic>> buildingMaintenance = {
+  Map<String, Map<String, dynamic>> buildingMaintenance = {
     'mine': {
       'wood': 2,
       'leather': 1,
@@ -311,27 +327,46 @@ class GameState extends ChangeNotifier {
     buildingLevels[buildingId] = currentLevel + 1;
 
     // 应用升级效果
-    Map<String, dynamic> effects = upgradeEffects['effects']!;
-    applyBuildingEffects(buildingId, effects);
+    applyBuildingEffects(buildingId, false);
 
     return true;
   }
 
   // 应用建筑效果
-  void applyBuildingEffects(String buildingId, Map<String, dynamic> effects) {
-    // 根据建筑类型应用不同的效果
-    switch (buildingId) {
-      case 'mine':
-        resourceProductionMultipliers['iron'] = effects['production'] as double;
-        resourceLimits['iron'] = (effects['storage'] as int);
-        break;
-      case 'steelworks':
-        resourceProductionMultipliers['steel'] =
-            effects['production'] as double;
-        resourceEfficiency['coal'] = effects['efficiency'] as double;
-        break;
-      // ... 其他建筑的效果应用 ...
+  void applyBuildingEffects(String buildingId, [bool remove = false]) {
+    var building = availableBuildings[buildingId];
+    if (building == null) {
+      return;
     }
+
+    var buildingEffects = building['effects'];
+    if (buildingEffects == null || buildingEffects is! Map<String, dynamic>) {
+      return;
+    }
+
+    int multiplier = remove ? -1 : 1;
+
+    buildingEffects.forEach((key, value) {
+      if (value is! int) return;
+
+      switch (key) {
+        case 'storage':
+          resourceLimits.forEach((resource, _) {
+            resourceLimits[resource] =
+                (resourceLimits[resource] ?? 100) + (value * multiplier);
+          });
+          break;
+        case 'population':
+          population['max'] = (population['max'] as int) + (value * multiplier);
+          break;
+        case 'meat_storage':
+          resourceLimits['meat'] =
+              (resourceLimits['meat'] ?? 100) + (value * multiplier);
+          resourceLimits['cured meat'] =
+              (resourceLimits['cured meat'] ?? 100) + (value * multiplier);
+          break;
+      }
+    });
   }
 
   // 更新建筑维护
@@ -349,9 +384,7 @@ class GameState extends ChangeNotifier {
           // 计算维护成本
           maintenance.forEach((resource, amount) {
             if (resource != 'interval') {
-              // 修复类型转换问题
-              int resourceAmount = (amount is int) ? amount : amount.toInt();
-              int required = resourceAmount * (count as int);
+              int required = amount as int;
               if ((resources[resource] ?? 0) < required) {
                 canMaintain = false;
               }
@@ -560,15 +593,84 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // 添加水资源生产计时器
+  Timer? _waterTimer;
+
+  // 在构造函数中初始化水资源生产
+  GameState() {
+    // 初始化基本状态
+    currentLocation = 'room'; // 确保初始化当前位置
+
+    // 初始化资源
+    resources = {
+      'wood': 0,
+      'water': 0,
+      // ... 其他资源初始化 ...
+    };
+
+    // 初始化定时器
+    _waterTimer = Timer.periodic(Duration(seconds: 10), (timer) {
+      if (room['buildings']?['well'] != null) {
+        _produceWater();
+      }
+    });
+
+    // ... 其他初始化代码 ...
+  }
+
+  // 水资源生产方法
+  void _produceWater() {
+    int wellCount = room['buildings']?['well'] ?? 0;
+    if (wellCount > 0) {
+      int waterProduction = wellCount; // 每个水井产生1单位水
+      addResource('water', waterProduction);
+
+      // 添加日志
+      if (waterProduction > 0) {
+        addLog('水井产出了 $waterProduction 单位水。');
+      }
+    }
+  }
+
+  // 在外面探索时获取水的方法
+  void gatherWater() {
+    if (!isGatheringWater) {
+      isGatheringWater = true;
+
+      // 收集水需要30秒
+      Future.delayed(Duration(seconds: 30), () {
+        // 随机获得1-3单位水
+        int waterFound = Random().nextInt(3) + 1;
+        addResource('water', waterFound);
+        addLog('收集到了 $waterFound 单位水。');
+        isGatheringWater = false;
+        notifyListeners();
+      });
+
+      notifyListeners();
+    }
+  }
+
+  // 添加状态标记
+  bool isGatheringWater = false;
+
   // 合并所有清理逻辑到一个 dispose 方法
   @override
   void dispose() {
     eventTimer?.cancel();
     huntingTimer?.cancel();
+    _waterTimer?.cancel();
     super.dispose();
   }
 
-  GameState();
+  // 添加日志列表
+  final List<String> gameLogs = [];
+
+  // 添加日志方法
+  void addLog(String message) {
+    gameLogs.add(message);
+    notifyListeners();
+  }
 
   // 从JSON创建游戏状态
   GameState.fromJson(Map<String, dynamic> json) {
@@ -626,27 +728,13 @@ class GameState extends ChangeNotifier {
 
   // 检查是否有足够的资源建造建筑
   bool canBuild(String buildingId) {
-    if (!availableBuildings.containsKey(buildingId)) {
-      return false;
-    }
+    if (!isBuildingUnlocked(buildingId)) return false;
 
-    // 检查前置条件
-    Map<String, dynamic> building = availableBuildings[buildingId]!;
-    if (building.containsKey('requires')) {
-      Map<String, int> requires =
-          Map<String, int>.from(building['requires'] as Map);
-      for (var entry in requires.entries) {
-        if ((room['buildings']?[entry.key] ?? 0) < entry.value) {
-          return false;
-        }
-      }
-    }
+    Map<String, dynamic> cost =
+        availableBuildings[buildingId]!['cost'] as Map<String, dynamic>;
 
-    // 检查资源是否足够
-    Map<String, dynamic> cost = building['cost'] as Map<String, dynamic>;
-    for (var resource in cost.keys) {
-      int required = cost[resource] as int;
-      if ((resources[resource] ?? 0) < required) {
+    for (var entry in cost.entries) {
+      if ((resources[entry.key] ?? 0) < (entry.value as int)) {
         return false;
       }
     }
@@ -656,13 +744,22 @@ class GameState extends ChangeNotifier {
 
   // 建造建筑
   bool buildStructure(String buildingId) {
-    if (!canBuild(buildingId)) return false;
+    if (!canBuild(buildingId)) {
+      return false;
+    }
 
-    // 消耗资源
-    Map<String, dynamic> cost =
-        availableBuildings[buildingId]!['cost'] as Map<String, dynamic>;
-    for (var resource in cost.keys) {
-      useResource(resource, cost[resource] as int);
+    var building = availableBuildings[buildingId];
+    if (building == null) {
+      return false;
+    }
+
+    var cost = building['cost'];
+    if (cost is Map<String, dynamic>) {
+      for (var entry in cost.entries) {
+        if (entry.value is int) {
+          useResource(entry.key, entry.value);
+        }
+      }
     }
 
     // 更新建筑数量
@@ -671,9 +768,14 @@ class GameState extends ChangeNotifier {
     }
     room['buildings'][buildingId] = (room['buildings'][buildingId] ?? 0) + 1;
 
+    // 应用建筑效果
+    applyBuildingEffects(buildingId, false);
+
     // 特殊建筑效果
     if (buildingId == 'trading_post') {
-      storeOpened = true; // 直接解锁交易功能
+      storeOpened = true;
+    } else if (buildingId == 'trap' && !outsideUnlocked) {
+      outsideUnlocked = true;
     }
 
     notifyListeners();
@@ -910,4 +1012,145 @@ class GameState extends ChangeNotifier {
     'wood': 1.0,
     'coal': 1.0,
   };
+
+  // 添加建筑解锁检查
+  bool isBuildingUnlocked(String buildingId) {
+    var building = availableBuildings[buildingId];
+    if (building == null) return false;
+
+    // 检查前置建筑要求
+    if (building.containsKey('requires')) {
+      var requires = building['requires'] as Map<String, dynamic>;
+      if (requires.containsKey('buildings')) {
+        Map<String, int> requiredBuildings =
+            Map<String, int>.from(requires['buildings']);
+        for (var entry in requiredBuildings.entries) {
+          if ((room['buildings']?[entry.key] ?? 0) < entry.value) {
+            return false;
+          }
+        }
+      }
+    }
+
+    return true;
+  }
+
+  // 保存游戏状态
+  Future<void> saveGame() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // 保存基本游戏状态
+      await prefs.setString('currentLocation', currentLocation);
+      await prefs.setBool('outsideUnlocked', outsideUnlocked);
+      await prefs.setBool('storeOpened', storeOpened);
+
+      // 保存资源
+      await prefs.setString('resources', jsonEncode(resources));
+
+      // 保存房间状态
+      await prefs.setString('room', jsonEncode(room));
+
+      // 保存建筑等级
+      await prefs.setString('buildingLevels', jsonEncode(buildingLevels));
+
+      // 保存人口信息
+      await prefs.setString('population', jsonEncode(population));
+
+      // 保存建筑维护信息
+      await prefs.setString(
+          'buildingMaintenance', jsonEncode(buildingMaintenance));
+
+      // 保存事件系统状态
+      await prefs.setString('eventSystem', jsonEncode(eventSystem.toJson()));
+
+      // 保存交易系统状态
+      await prefs.setString('tradeSystem', jsonEncode(tradeSystem.toJson()));
+
+      // 通知监听器更新UI
+      notifyListeners();
+    } catch (e) {
+      print('Error saving game: $e');
+      rethrow; // 重新抛出异常以便上层处理
+    }
+  }
+
+  // 加载游戏状态
+  Future<bool> loadGame() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // 检查是否有存档
+      if (!prefs.containsKey('currentLocation')) {
+        return false;
+      }
+
+      // 加载基本游戏状态
+      currentLocation = prefs.getString('currentLocation') ?? 'room';
+      outsideUnlocked = prefs.getBool('outsideUnlocked') ?? false;
+      storeOpened = prefs.getBool('storeOpened') ?? false;
+
+      // 加载资源
+      final resourcesStr = prefs.getString('resources');
+      if (resourcesStr != null) {
+        resources = Map<String, int>.from(jsonDecode(resourcesStr));
+      }
+
+      // 加载房间状态
+      final roomStr = prefs.getString('room');
+      if (roomStr != null) {
+        room = Map<String, dynamic>.from(jsonDecode(roomStr));
+      }
+
+      // 加载建筑等级
+      final buildingLevelsStr = prefs.getString('buildingLevels');
+      if (buildingLevelsStr != null) {
+        buildingLevels = Map<String, int>.from(jsonDecode(buildingLevelsStr));
+      }
+
+      // 加载人口信息
+      final populationStr = prefs.getString('population');
+      if (populationStr != null) {
+        population = Map<String, dynamic>.from(jsonDecode(populationStr));
+      }
+
+      // 加载建筑维护信息
+      final buildingMaintenanceStr = prefs.getString('buildingMaintenance');
+      if (buildingMaintenanceStr != null) {
+        buildingMaintenance = Map<String, Map<String, dynamic>>.from(
+          jsonDecode(buildingMaintenanceStr),
+        );
+      }
+
+      // 加载事件系统状态
+      final eventSystemStr = prefs.getString('eventSystem');
+      if (eventSystemStr != null) {
+        eventSystem.fromJson(jsonDecode(eventSystemStr));
+      }
+
+      // 加载交易系统状态
+      final tradeSystemStr = prefs.getString('tradeSystem');
+      if (tradeSystemStr != null) {
+        tradeSystem.fromJson(jsonDecode(tradeSystemStr));
+      }
+
+      notifyListeners();
+      return true;
+    } catch (e) {
+      print('Error loading game: $e');
+      return false;
+    }
+  }
+
+  // 检查是否有存档
+  Future<bool> hasSaveGame() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.containsKey('currentLocation');
+  }
+
+  // 删除存档
+  Future<void> deleteSaveGame() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+  }
 }

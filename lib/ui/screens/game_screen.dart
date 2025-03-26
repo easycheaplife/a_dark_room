@@ -2,10 +2,16 @@ import 'package:flutter/material.dart';
 import '../../engine/game_engine.dart';
 import 'room_screen.dart';
 import 'outside_screen.dart';
+import '../../models/game_state.dart';
 
 /// 游戏主屏幕，根据游戏状态显示不同的游戏区域
 class GameScreen extends StatefulWidget {
-  const GameScreen({super.key});
+  final GameState gameState; // 添加 gameState 属性
+
+  const GameScreen({
+    super.key,
+    required this.gameState,
+  });
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -13,21 +19,21 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   final GameEngine _engine = GameEngine();
-  String _currentLocation = 'room';
   bool _outsideUnlocked = false;
+  int _currentIndex = 0; // 改为可变
 
   @override
   void initState() {
     super.initState();
     // 监听游戏状态变化
-    _engine.stateChangeNotifier.addListener(_updateScreen);
+    widget.gameState.addListener(_updateScreen);
     // 初始状态
     _updateLocation();
   }
 
   @override
   void dispose() {
-    _engine.stateChangeNotifier.removeListener(_updateScreen);
+    widget.gameState.removeListener(_updateScreen);
     super.dispose();
   }
 
@@ -40,10 +46,8 @@ class _GameScreenState extends State<GameScreen> {
 
   // 更新当前位置
   void _updateLocation() {
-    if (_engine.gameState != null) {
-      _currentLocation = _engine.gameState!.currentLocation;
-      _outsideUnlocked = _engine.gameState!.outsideUnlocked;
-    }
+    _outsideUnlocked = widget.gameState.outsideUnlocked;
+    _currentIndex = widget.gameState.currentLocation == 'room' ? 0 : 1;
   }
 
   @override
@@ -51,7 +55,13 @@ class _GameScreenState extends State<GameScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: _buildCurrentScreen(),
+        child: IndexedStack(
+          index: _currentIndex,
+          children: [
+            RoomScreen(gameState: widget.gameState),
+            OutsideScreen(gameState: widget.gameState),
+          ],
+        ),
       ),
       bottomNavigationBar: _outsideUnlocked ? _buildNavigationBar() : null,
     );
@@ -63,10 +73,11 @@ class _GameScreenState extends State<GameScreen> {
       backgroundColor: Colors.black,
       selectedItemColor: Colors.white,
       unselectedItemColor: Colors.grey,
-      currentIndex: _currentLocation == 'room' ? 0 : 1,
+      currentIndex: _currentIndex,
       onTap: (index) {
-        _engine.updateGameState((state) {
-          state.currentLocation = index == 0 ? 'room' : 'outside';
+        setState(() {
+          widget.gameState.currentLocation = index == 0 ? 'room' : 'outside';
+          widget.gameState.notifyListeners();
         });
       },
       items: [
@@ -80,17 +91,5 @@ class _GameScreenState extends State<GameScreen> {
         ),
       ],
     );
-  }
-
-  // 根据当前位置构建相应的屏幕
-  Widget _buildCurrentScreen() {
-    switch (_currentLocation) {
-      case 'room':
-        return const RoomScreen();
-      case 'outside':
-        return const OutsideScreen();
-      default:
-        return const RoomScreen();
-    }
   }
 }

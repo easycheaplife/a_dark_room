@@ -32,6 +32,10 @@ class GameEvent {
 }
 
 class EventSystem {
+  DateTime lastEventTime = DateTime.now();
+  List<String> eventHistory = [];
+  Map<String, bool> eventFlags = {};
+
   final Map<String, GameEvent> events = {
     'stranger': GameEvent(
       id: 'stranger',
@@ -164,5 +168,21 @@ class EventSystem {
 
     int randomIndex = _random.nextInt(availableEvents.length);
     return availableEvents[randomIndex];
+  }
+
+  // 转换为JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'lastEventTime': lastEventTime.toIso8601String(),
+      'eventHistory': eventHistory,
+      'eventFlags': eventFlags,
+    };
+  }
+
+  // 从JSON加载
+  void fromJson(Map<String, dynamic> json) {
+    lastEventTime = DateTime.parse(json['lastEventTime']);
+    eventHistory = List<String>.from(json['eventHistory']);
+    eventFlags = Map<String, bool>.from(json['eventFlags']);
   }
 }
