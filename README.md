@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # a_dark_room
 
 A new Flutter project.
@@ -14,3 +15,7 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+=======
+# a_dark_room
+Port the web version of A Dark Room to Flutter.
+>>>>>>> c8e8fe4b3d3d07be35ecfba98d4acf46b64cb9a5

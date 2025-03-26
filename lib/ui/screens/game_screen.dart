@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../engine/game_engine.dart';
 import 'room_screen.dart';
+import 'outside_screen.dart';
 
 /// 游戏主屏幕，根据游戏状态显示不同的游戏区域
 class GameScreen extends StatefulWidget {
@@ -13,6 +14,7 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   final GameEngine _engine = GameEngine();
   String _currentLocation = 'room';
+  bool _outsideUnlocked = false;
 
   @override
   void initState() {
@@ -40,6 +42,7 @@ class _GameScreenState extends State<GameScreen> {
   void _updateLocation() {
     if (_engine.gameState != null) {
       _currentLocation = _engine.gameState!.currentLocation;
+      _outsideUnlocked = _engine.gameState!.outsideUnlocked;
     }
   }
 
@@ -50,6 +53,32 @@ class _GameScreenState extends State<GameScreen> {
       body: SafeArea(
         child: _buildCurrentScreen(),
       ),
+      bottomNavigationBar: _outsideUnlocked ? _buildNavigationBar() : null,
+    );
+  }
+
+  // 构建底部导航栏
+  Widget _buildNavigationBar() {
+    return BottomNavigationBar(
+      backgroundColor: Colors.black,
+      selectedItemColor: Colors.white,
+      unselectedItemColor: Colors.grey,
+      currentIndex: _currentLocation == 'room' ? 0 : 1,
+      onTap: (index) {
+        _engine.updateGameState((state) {
+          state.currentLocation = index == 0 ? 'room' : 'outside';
+        });
+      },
+      items: [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home),
+          label: '房间',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.forest),
+          label: '外部',
+        ),
+      ],
     );
   }
 
@@ -58,7 +87,8 @@ class _GameScreenState extends State<GameScreen> {
     switch (_currentLocation) {
       case 'room':
         return const RoomScreen();
-      // 随着游戏开发，这里会添加更多的屏幕
+      case 'outside':
+        return const OutsideScreen();
       default:
         return const RoomScreen();
     }
