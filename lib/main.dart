@@ -5,8 +5,31 @@ import 'models/game_state.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // 确保 Flutter 绑定初始化
-  await SharedPreferences.getInstance(); // 初始化 shared_preferences
+  final prefs = await SharedPreferences.getInstance(); // 初始化 shared_preferences
+
   final gameState = GameState(); // 创建 GameState 实例
+
+  // 尝试加载最后一个存档
+  try {
+    print('Checking for save game...');
+    bool hasSave = await gameState.hasSaveGame();
+    print('Has save game: $hasSave');
+
+    if (hasSave) {
+      print('Attempting to load game...');
+      bool success = await gameState.loadGame();
+      print('Load game success: $success');
+
+      if (!success) {
+        print('Failed to load game, starting new game');
+      }
+    } else {
+      print('No save game found, starting new game');
+    }
+  } catch (e) {
+    print('Error during save game loading: $e');
+  }
+
   runApp(MyApp(gameState: gameState));
 }
 

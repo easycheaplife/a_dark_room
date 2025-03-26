@@ -22,6 +22,7 @@ class _RoomScreenState extends State<RoomScreen> {
   bool _showBuildingsMenu = false; // 控制建筑菜单的显示
   bool _showVillagersMenu = false; // 控制村民菜单的显示
   bool _showTradeMenu = false;
+  bool _showSaveMenu = false;
   Map<String, int> _resources = {}; // 资源
   Map<String, int> _buildings = {}; // 已建造的建筑
   Map<String, dynamic> _population = {}; // 村民状态
@@ -286,20 +287,23 @@ class _RoomScreenState extends State<RoomScreen> {
                         ? _buildVillagersMenu()
                         : _showTradeMenu
                             ? _buildTradeMenu()
-                            : Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildFireStatus(),
-                                  const SizedBox(height: 16),
-                                  _buildResourceDisplay(),
-                                  const SizedBox(height: 16),
-                                  _buildWorkerStatus(),
-                                  const SizedBox(height: 16),
-                                  _buildBuildingsGrid(),
-                                  const SizedBox(height: 16),
-                                  _buildGameLog(),
-                                ],
-                              ),
+                            : _showSaveMenu
+                                ? _buildSaveMenu()
+                                : Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      _buildFireStatus(),
+                                      const SizedBox(height: 16),
+                                      _buildResourceDisplay(),
+                                      const SizedBox(height: 16),
+                                      _buildWorkerStatus(),
+                                      const SizedBox(height: 16),
+                                      _buildBuildingsGrid(),
+                                      const SizedBox(height: 16),
+                                      _buildGameLog(),
+                                    ],
+                                  ),
               ),
             ),
             Container(
@@ -502,7 +506,10 @@ class _RoomScreenState extends State<RoomScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (!_showBuildingsMenu && !_showVillagersMenu && !_showTradeMenu)
+          if (!_showBuildingsMenu &&
+              !_showVillagersMenu &&
+              !_showTradeMenu &&
+              !_showSaveMenu)
             _buildMainActionButtons(),
           const SizedBox(height: 8),
         ],
@@ -536,6 +543,7 @@ class _RoomScreenState extends State<RoomScreen> {
             _showBuildingsMenu = true;
             _showVillagersMenu = false;
             _showTradeMenu = false;
+            _showSaveMenu = false;
           });
         }),
         _buildActionButton('村民', _fireLevel > 0, () {
@@ -543,6 +551,7 @@ class _RoomScreenState extends State<RoomScreen> {
             _showVillagersMenu = true;
             _showBuildingsMenu = false;
             _showTradeMenu = false;
+            _showSaveMenu = false;
           });
         }),
         if (storeOpened)
@@ -551,6 +560,7 @@ class _RoomScreenState extends State<RoomScreen> {
               _showTradeMenu = true;
               _showBuildingsMenu = false;
               _showVillagersMenu = false;
+              _showSaveMenu = false;
             });
           }),
         if (outsideUnlocked)
@@ -560,26 +570,13 @@ class _RoomScreenState extends State<RoomScreen> {
               widget.gameState.notifyListeners();
             });
           }),
-        _buildActionButton('保存', true, () async {
-          try {
-            await widget.gameState.saveGame();
-            _addLog('游戏已保存。');
-          } catch (e) {
-            _addLog('保存失败：$e');
-          }
-        }),
-        _buildActionButton('读取', true, () async {
-          try {
-            bool success = await widget.gameState.loadGame();
-            if (success) {
-              _addLog('游戏已读取。');
-              _updateState();
-            } else {
-              _addLog('没有找到存档。');
-            }
-          } catch (e) {
-            _addLog('读取失败：$e');
-          }
+        _buildActionButton('存档', true, () {
+          setState(() {
+            _showSaveMenu = true;
+            _showBuildingsMenu = false;
+            _showVillagersMenu = false;
+            _showTradeMenu = false;
+          });
         }),
       ],
     );
@@ -1076,5 +1073,276 @@ class _RoomScreenState extends State<RoomScreen> {
         ),
       ),
     );
+  }
+
+  // 构建存档菜单
+  Widget _buildSaveMenu() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: widget.gameState.getAllSaveSlots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final slots = snapshot.data!;
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade900,
+                border: Border.all(color: Colors.grey.shade800),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                '存档目录: ${GameState.SAVE_DIRECTORY}',
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...slots.map((slot) {
+              bool hasSave = slot['timestamp']?.isNotEmpty ?? false;
+              String timestamp = hasSave
+                  ? DateTime.parse(slot['timestamp'])
+                      .toString()
+                      .substring(0, 16)
+                  : '空存档';
+              String location = slot['location'] ?? '';
+              int population = slot['population'] ?? 0;
+
+              return Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 10),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade900,
+                  border: Border.all(
+                    color:
+                        hasSave ? Colors.grey.shade700 : Colors.grey.shade800,
+                  ),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: ListTile(
+                  title: Text(
+                    '存档 ${slot['slot'].substring(4)}',
+                    style: TextStyle(
+                      color: hasSave ? Colors.white : Colors.grey,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '时间: $timestamp',
+                        style: TextStyle(
+                          color: hasSave
+                              ? Colors.grey.shade300
+                              : Colors.grey.shade600,
+                          fontSize: 12,
+                        ),
+                      ),
+                      if (hasSave) ...[
+                        Text(
+                          '位置: $location',
+                          style: TextStyle(
+                            color: Colors.grey.shade300,
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(
+                          '人口: $population',
+                          style: TextStyle(
+                            color: Colors.grey.shade300,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (hasSave)
+                        IconButton(
+                          icon: const Icon(Icons.delete),
+                          color: Colors.red,
+                          onPressed: () async {
+                            await _handleDeleteSaveSlot(slot['slot']);
+                          },
+                        ),
+                      IconButton(
+                        icon: const Icon(Icons.save),
+                        color: Colors.green,
+                        onPressed: () async {
+                          try {
+                            widget.gameState.currentSaveSlot = slot['slot'];
+                            await widget.gameState.saveGame();
+                            _addLog('保存到存档 ${slot['slot'].substring(4)}');
+                            setState(() {}); // 刷新UI
+                          } catch (e) {
+                            _addLog('保存游戏失败: $e');
+                          }
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.folder_open),
+                        color: Colors.blue,
+                        onPressed: hasSave
+                            ? () async {
+                                try {
+                                  bool success = await widget.gameState
+                                      .loadGame(slot['slot']);
+                                  if (success) {
+                                    _addLog(
+                                        '从存档 ${slot['slot'].substring(4)} 加载了游戏');
+                                    _updateState(); // 更新所有状态
+                                    setState(() {}); // 刷新UI
+                                  } else {
+                                    _addLog('加载存档失败');
+                                  }
+                                } catch (e) {
+                                  _addLog('加载存档失败: $e');
+                                }
+                              }
+                            : null,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _showSaveMenu = false;
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey.shade800,
+                minimumSize: const Size(double.infinity, 40),
+              ),
+              child: const Text('返回'),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: () async {
+                // 显示确认对话框
+                bool? confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('确认清除所有存档'),
+                    content: const Text('确定要清除所有存档吗？此操作不可恢复。'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('取消'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        child: const Text('清除'),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (confirm == true) {
+                  try {
+                    await widget.gameState.clearAllSaveSlots();
+                    _addLog('已清除所有存档');
+                    await _refreshSaveMenu();
+                  } catch (e) {
+                    _addLog('清除存档失败: $e');
+                    if (context.mounted) {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('错误'),
+                          content: Text('清除存档失败: $e'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('确定'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade900,
+                minimumSize: const Size(double.infinity, 40),
+              ),
+              child: const Text('清除所有存档'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // 添加刷新存档菜单的方法
+  Future<void> _refreshSaveMenu() async {
+    if (mounted) {
+      setState(() {
+        _showSaveMenu = false;
+      });
+      await Future.delayed(const Duration(milliseconds: 100));
+      if (mounted) {
+        setState(() {
+          _showSaveMenu = true;
+        });
+      }
+    }
+  }
+
+  // 修改删除存档的处理方法
+  Future<void> _handleDeleteSaveSlot(String slotKey) async {
+    try {
+      // 显示确认对话框
+      bool? confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('确认删除'),
+          content: Text('确定要删除存档 ${slotKey.substring(4)} 吗？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('删除'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm == true) {
+        await widget.gameState.deleteSaveSlot(slotKey);
+        _addLog('删除了存档 ${slotKey.substring(4)}');
+        await _refreshSaveMenu();
+      }
+    } catch (e) {
+      _addLog('删除存档失败: $e');
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('错误'),
+            content: Text('删除存档失败: $e'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('确定'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
   }
 }

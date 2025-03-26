@@ -1035,122 +1035,280 @@ class GameState extends ChangeNotifier {
     return true;
   }
 
-  // 保存游戏状态
+  // 添加存档相关字段
+  static const String SAVE_DIRECTORY = 'saves';
+  static const int MAX_SAVE_SLOTS = 3;
+  String currentSaveSlot = 'slot1';
+
+  // 获取存档目录
+  Future<String> getSaveDirectory() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('saveDirectory') ?? 'saves';
+  }
+
+  // 设置存档目录
+  Future<void> setSaveDirectory(String directory) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('saveDirectory', directory);
+  }
+
+  // 获取所有存档槽位信息
+  Future<List<Map<String, dynamic>>> getAllSaveSlots() async {
+    List<Map<String, dynamic>> slots = [];
+    for (int i = 1; i <= MAX_SAVE_SLOTS; i++) {
+      String slotKey = 'slot$i';
+      final prefs = await SharedPreferences.getInstance();
+      String? saveData = prefs.getString(slotKey);
+      if (saveData != null) {
+        try {
+          Map<String, dynamic> data = jsonDecode(saveData);
+          slots.add({
+            'slot': slotKey,
+            'timestamp': data['timestamp'] ?? '',
+            'location': data['currentLocation'] ?? 'room',
+            'population': data['population']?['total'] ?? 0,
+          });
+        } catch (e) {
+          print('Error reading save slot $slotKey: $e');
+        }
+      } else {
+        slots.add({
+          'slot': slotKey,
+          'timestamp': '',
+          'location': '',
+          'population': 0,
+        });
+      }
+    }
+    return slots;
+  }
+
+  // 修改保存游戏方法
   Future<void> saveGame() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      final saveData = toJson();
+      saveData['timestamp'] = DateTime.now().toIso8601String();
 
-      // 保存基本游戏状态
-      await prefs.setString('currentLocation', currentLocation);
-      await prefs.setBool('outsideUnlocked', outsideUnlocked);
-      await prefs.setBool('storeOpened', storeOpened);
+      // 保存到当前槽位
+      await prefs.setString(currentSaveSlot, jsonEncode(saveData));
 
-      // 保存资源
-      await prefs.setString('resources', jsonEncode(resources));
+      // 保存存档目录
+      await setSaveDirectory(SAVE_DIRECTORY);
 
-      // 保存房间状态
-      await prefs.setString('room', jsonEncode(room));
-
-      // 保存建筑等级
-      await prefs.setString('buildingLevels', jsonEncode(buildingLevels));
-
-      // 保存人口信息
-      await prefs.setString('population', jsonEncode(population));
-
-      // 保存建筑维护信息
-      await prefs.setString(
-          'buildingMaintenance', jsonEncode(buildingMaintenance));
-
-      // 保存事件系统状态
-      await prefs.setString('eventSystem', jsonEncode(eventSystem.toJson()));
-
-      // 保存交易系统状态
-      await prefs.setString('tradeSystem', jsonEncode(tradeSystem.toJson()));
-
-      // 通知监听器更新UI
       notifyListeners();
     } catch (e) {
       print('Error saving game: $e');
-      rethrow; // 重新抛出异常以便上层处理
+      rethrow;
     }
   }
 
-  // 加载游戏状态
-  Future<bool> loadGame() async {
+  // 修改加载游戏方法
+  Future<bool> loadGame([String? slot]) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      String saveSlot = slot ?? currentSaveSlot;
+
+      print('Loading game from slot: $saveSlot');
 
       // 检查是否有存档
-      if (!prefs.containsKey('currentLocation')) {
+      if (!prefs.containsKey(saveSlot)) {
+        print('No save data found in slot: $saveSlot');
         return false;
       }
 
+      // 加载存档数据
+      String? saveDataString = prefs.getString(saveSlot);
+      if (saveDataString == null) {
+        print('Save data is null for slot: $saveSlot');
+        return false;
+      }
+
+      print('Found save data, attempting to decode...');
+      final saveData = jsonDecode(saveDataString);
+      print('Successfully decoded save data');
+
+      // 更新当前槽位
+      currentSaveSlot = saveSlot;
+      print('Updated current save slot to: $currentSaveSlot');
+
       // 加载基本游戏状态
-      currentLocation = prefs.getString('currentLocation') ?? 'room';
-      outsideUnlocked = prefs.getBool('outsideUnlocked') ?? false;
-      storeOpened = prefs.getBool('storeOpened') ?? false;
+      currentLocation = saveData['currentLocation'] ?? 'room';
+      outsideUnlocked = saveData['outsideUnlocked'] ?? false;
+      storeOpened = saveData['storeOpened'] ?? false;
+      print(
+          'Loaded basic game state: location=$currentLocation, outsideUnlocked=$outsideUnlocked, storeOpened=$storeOpened');
 
       // 加载资源
-      final resourcesStr = prefs.getString('resources');
-      if (resourcesStr != null) {
-        resources = Map<String, int>.from(jsonDecode(resourcesStr));
-      }
+      resources = Map<String, int>.from(saveData['resources'] ?? {});
+      print('Loaded resources: ${resources.length} items');
 
       // 加载房间状态
-      final roomStr = prefs.getString('room');
-      if (roomStr != null) {
-        room = Map<String, dynamic>.from(jsonDecode(roomStr));
-      }
+      room = Map<String, dynamic>.from(saveData['room'] ?? {});
+      print('Loaded room state: ${room.length} items');
 
       // 加载建筑等级
-      final buildingLevelsStr = prefs.getString('buildingLevels');
-      if (buildingLevelsStr != null) {
-        buildingLevels = Map<String, int>.from(jsonDecode(buildingLevelsStr));
-      }
+      buildingLevels = Map<String, int>.from(saveData['buildingLevels'] ?? {});
+      print('Loaded building levels: ${buildingLevels.length} items');
 
       // 加载人口信息
-      final populationStr = prefs.getString('population');
-      if (populationStr != null) {
-        population = Map<String, dynamic>.from(jsonDecode(populationStr));
-      }
+      population = Map<String, dynamic>.from(saveData['population'] ??
+          {'workers': {}, 'total': 0, 'max': 0, 'happiness': 100});
+      print(
+          'Loaded population: total=${population['total']}, max=${population['max']}');
 
       // 加载建筑维护信息
-      final buildingMaintenanceStr = prefs.getString('buildingMaintenance');
-      if (buildingMaintenanceStr != null) {
-        buildingMaintenance = Map<String, Map<String, dynamic>>.from(
-          jsonDecode(buildingMaintenanceStr),
-        );
-      }
+      buildingMaintenance = Map<String, Map<String, dynamic>>.from(
+        saveData['buildingMaintenance'] ?? {},
+      );
+      print('Loaded building maintenance: ${buildingMaintenance.length} items');
 
       // 加载事件系统状态
-      final eventSystemStr = prefs.getString('eventSystem');
-      if (eventSystemStr != null) {
-        eventSystem.fromJson(jsonDecode(eventSystemStr));
+      if (saveData['eventSystem'] != null) {
+        eventSystem.fromJson(saveData['eventSystem']);
+        print('Loaded event system state');
       }
 
       // 加载交易系统状态
-      final tradeSystemStr = prefs.getString('tradeSystem');
-      if (tradeSystemStr != null) {
-        tradeSystem.fromJson(jsonDecode(tradeSystemStr));
+      if (saveData['tradeSystem'] != null) {
+        tradeSystem.fromJson(saveData['tradeSystem']);
+        print('Loaded trade system state');
       }
 
+      print('Game loaded successfully');
       notifyListeners();
       return true;
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Error loading game: $e');
+      print('Stack trace: $stackTrace');
       return false;
     }
   }
 
   // 检查是否有存档
   Future<bool> hasSaveGame() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.containsKey('currentLocation');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      bool hasSave = prefs.containsKey(currentSaveSlot);
+      print('Checking for save game in slot $currentSaveSlot: $hasSave');
+      return hasSave;
+    } catch (e) {
+      print('Error checking for save game: $e');
+      return false;
+    }
   }
 
-  // 删除存档
+  // 删除指定槽位的存档
+  Future<void> deleteSaveSlot(String slot) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      print('Attempting to delete save slot: $slot');
+
+      // 检查存档是否存在
+      if (!prefs.containsKey(slot)) {
+        print('Save slot $slot does not exist');
+        return;
+      }
+
+      // 如果删除的是当前存档槽位，重置当前槽位
+      if (slot == currentSaveSlot) {
+        currentSaveSlot = 'slot1';
+        print('Reset current save slot to slot1');
+      }
+
+      // 删除存档
+      bool success = await prefs.remove(slot);
+      print('Delete save slot $slot: ${success ? 'success' : 'failed'}');
+
+      // 强制刷新 SharedPreferences
+      await prefs.reload();
+      print('Reloaded SharedPreferences');
+
+      // 验证存档是否已被删除
+      if (prefs.containsKey(slot)) {
+        print('Warning: Save slot $slot still exists after deletion');
+        // 尝试再次删除
+        await prefs.remove(slot);
+        await prefs.reload();
+      }
+
+      // 通知监听器更新UI
+      notifyListeners();
+      print('Notified listeners of save slot deletion');
+    } catch (e) {
+      print('Error deleting save slot: $e');
+      rethrow;
+    }
+  }
+
+  // 删除当前存档
   Future<void> deleteSaveGame() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    await prefs.remove(currentSaveSlot);
+    notifyListeners();
+  }
+
+  // 清除所有存档
+  Future<void> clearAllSaveSlots() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      print('Starting to clear all save slots...');
+
+      // 删除所有存档槽位
+      for (int i = 1; i <= MAX_SAVE_SLOTS; i++) {
+        String slotKey = 'slot$i';
+        print('Attempting to delete save slot: $slotKey');
+
+        // 检查存档是否存在
+        if (!prefs.containsKey(slotKey)) {
+          print('Save slot $slotKey does not exist, skipping...');
+          continue;
+        }
+
+        // 删除存档
+        bool success = await prefs.remove(slotKey);
+        print('Delete save slot $slotKey: ${success ? 'success' : 'failed'}');
+
+        // 验证存档是否已被删除
+        if (prefs.containsKey(slotKey)) {
+          print('Warning: Save slot $slotKey still exists after deletion');
+          // 尝试再次删除
+          await prefs.remove(slotKey);
+          await prefs.reload();
+
+          // 再次验证
+          if (prefs.containsKey(slotKey)) {
+            print(
+                'Error: Failed to delete save slot $slotKey after multiple attempts');
+            throw Exception('Failed to delete save slot $slotKey');
+          }
+        }
+      }
+
+      // 重置当前存档槽位
+      currentSaveSlot = 'slot1';
+      print('Reset current save slot to slot1');
+
+      // 强制刷新 SharedPreferences
+      await prefs.reload();
+      print('Reloaded SharedPreferences');
+
+      // 验证是否还有任何存档存在
+      for (int i = 1; i <= MAX_SAVE_SLOTS; i++) {
+        String slotKey = 'slot$i';
+        if (prefs.containsKey(slotKey)) {
+          print(
+              'Error: Save slot $slotKey still exists after clearing all slots');
+          throw Exception('Failed to clear all save slots');
+        }
+      }
+
+      // 通知监听器更新UI
+      notifyListeners();
+      print('Successfully cleared all save slots and notified listeners');
+    } catch (e) {
+      print('Error clearing all save slots: $e');
+      rethrow;
+    }
   }
 }
