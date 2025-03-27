@@ -110,7 +110,7 @@ class _RoomScreenState extends State<RoomScreen> {
 
   // 收集木头
   void _gatherWood() {
-    widget.gameState.addResource('wood', 100);
+    widget.gameState.addResource('wood', 1);
     widget.gameState.notifyListeners();
     _addLog('收集了一些木头。');
   }
