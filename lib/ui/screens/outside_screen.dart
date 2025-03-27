@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../engine/game_engine.dart';
 import '../../models/game_state.dart';
 import '../../models/combat_system.dart';
+import '../../config/game_settings.dart';
 import 'dart:math';
 
 /// 户外屏幕 - 村庄和探索
@@ -252,16 +253,8 @@ class _OutsideScreenState extends State<OutsideScreen> {
   }
 
   String _generateNewLocation() {
-    List<String> possibleLocations = [
-      'cave',
-      'river',
-      'mountain',
-      'desert',
-      'swamp',
-      'ruins',
-    ];
-
     // 过滤掉已发现的位置
+    List<String> possibleLocations = List.from(GameSettings.possibleLocations);
     possibleLocations.removeWhere((loc) => _discoveredLocations.contains(loc));
     if (possibleLocations.isEmpty) return '';
 
@@ -269,56 +262,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
   }
 
   Map<String, dynamic> _generateLocationInfo(String location) {
-    Map<String, dynamic> info = {
-      'name': '',
-      'description': '',
-      'resources': [],
-      'dangers': [],
-      'exploration_time': 30,
-      'scavenging_time': 20,
-      'hunting_time': 15,
-    };
-
-    switch (location) {
-      case 'cave':
-        info['name'] = '洞穴';
-        info['description'] = '一个黑暗的洞穴，可能藏有宝藏。';
-        info['resources'] = ['coal', 'iron', 'sulphur'];
-        info['dangers'] = ['bat', 'spider'];
-        break;
-      case 'river':
-        info['name'] = '河流';
-        info['description'] = '一条清澈的河流，有丰富的鱼类资源。';
-        info['resources'] = ['water', 'fish'];
-        info['dangers'] = ['crocodile'];
-        break;
-      case 'mountain':
-        info['name'] = '山脉';
-        info['description'] = '陡峭的山脉，富含矿物。';
-        info['resources'] = ['iron', 'coal', 'stone'];
-        info['dangers'] = ['bear'];
-        break;
-      case 'desert':
-        info['name'] = '沙漠';
-        info['description'] = '一片荒芜的沙漠，有稀有的资源。';
-        info['resources'] = ['sand', 'cactus'];
-        info['dangers'] = ['scorpion'];
-        break;
-      case 'swamp':
-        info['name'] = '沼泽';
-        info['description'] = '潮湿的沼泽地，有独特的资源。';
-        info['resources'] = ['herbs', 'mushroom'];
-        info['dangers'] = ['snake'];
-        break;
-      case 'ruins':
-        info['name'] = '废墟';
-        info['description'] = '古老的废墟，可能藏有珍贵的物品。';
-        info['resources'] = ['scrap', 'artifact'];
-        info['dangers'] = ['ghost'];
-        break;
-    }
-
-    return info;
+    return GameSettings.locationConfigs[location]!;
   }
 
   void _handleDanger(String danger) {
@@ -426,13 +370,6 @@ class _OutsideScreenState extends State<OutsideScreen> {
 
   // 构建资源显示
   Widget _buildResourceDisplay() {
-    final Map<String, List<String>> resourceGroups = {
-      '基础资源': ['wood', 'meat', 'water'],
-      '狩猎资源': ['fur', 'scales', 'teeth', 'leather'],
-      '制作材料': ['cloth', 'herbs', 'coal', 'iron', 'steel', 'sulphur'],
-      '食物': ['cured meat'],
-    };
-
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
@@ -442,7 +379,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: resourceGroups.entries.map((group) {
+        children: GameSettings.resourceGroups.entries.map((group) {
           final resources = group.value
               .where((resource) => (_resources[resource] ?? 0) > 0)
               .toList();

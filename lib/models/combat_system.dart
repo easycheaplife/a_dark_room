@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'game_state.dart';
+import '../config/game_settings.dart';
 
 class Equipment {
   final String id;
@@ -120,13 +121,8 @@ class CombatSystem {
   };
 
   // 当前战斗状态
-  Map<String, dynamic> _combatState = {
-    'inCombat': false,
-    'currentEnemy': null,
-    'enemyHealth': 0,
-    'playerHealth': 0,
-    'turnsLeft': 0,
-  };
+  Map<String, dynamic> _combatState =
+      Map<String, dynamic>.from(GameSettings.initialCombatState);
 
   // 获取当前装备的攻击力和防御力
   Map<String, int> getEquipmentStats(GameState state) {
@@ -257,13 +253,7 @@ class CombatSystem {
     }
 
     // 重置战斗状态
-    _combatState = {
-      'inCombat': false,
-      'currentEnemy': null,
-      'enemyHealth': 0,
-      'playerHealth': 0,
-      'turnsLeft': 0,
-    };
+    _combatState = Map<String, dynamic>.from(GameSettings.initialCombatState);
 
     return result;
   }
@@ -291,12 +281,6 @@ class CombatSystem {
 
   // 清理资源
   void dispose() {
-    _combatState = {
-      'inCombat': false,
-      'currentEnemy': null,
-      'enemyHealth': 0,
-      'playerHealth': 0,
-      'turnsLeft': 0,
-    };
+    _combatState = Map<String, dynamic>.from(GameSettings.initialCombatState);
   }
 }

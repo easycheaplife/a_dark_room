@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/game_state.dart';
 import '../../models/event_system.dart';
+import '../../config/game_settings.dart';
 
 /// 房间屏幕 - 游戏的起始区域
 class RoomScreen extends StatefulWidget {
@@ -33,7 +34,8 @@ class _RoomScreenState extends State<RoomScreen> {
     super.initState();
     // 添加初始金钱
     if (!widget.gameState.resources.containsKey('money')) {
-      widget.gameState.resources['money'] = 100; // 给玩家一些初始金钱
+      widget.gameState.resources['money'] =
+          GameSettings.initialResources['money']!;
     }
 
     // 添加事件检查
@@ -110,7 +112,16 @@ class _RoomScreenState extends State<RoomScreen> {
 
   // 收集木头
   void _gatherWood() {
-    widget.gameState.addResource('wood', 1);
+    final config = GameSettings.resourceGatheringConfigs['wood']!;
+    int amount = config['base_amount'] as int;
+
+    // 如果有工具，应用倍率
+    if (widget.gameState.resources.containsKey('axe') &&
+        widget.gameState.resources['axe']! > 0) {
+      amount = (amount * (config['tool_multiplier'] as double)).round();
+    }
+
+    widget.gameState.addResource('wood', amount);
     widget.gameState.notifyListeners();
     _addLog('收集了一些木头。');
   }
@@ -150,15 +161,8 @@ class _RoomScreenState extends State<RoomScreen> {
 
   // 修改资源显示方法
   Widget _buildResourceDisplay() {
-    final Map<String, List<String>> resourceGroups = {
-      '基础资源': ['wood', 'meat', 'water'],
-      '狩猎资源': ['fur', 'scales', 'teeth', 'leather'],
-      '制作材料': ['cloth', 'herbs', 'coal', 'iron', 'steel', 'sulphur'],
-      '食物': ['cured meat'],
-    };
-
     // 检查是否有任何基础资源
-    bool hasBasicResources = resourceGroups['基础资源']!
+    bool hasBasicResources = GameSettings.resourceGroups['基础资源']!
         .any((resource) => (_resources[resource] ?? 0) > 0);
 
     if (!hasBasicResources) {
@@ -174,7 +178,7 @@ class _RoomScreenState extends State<RoomScreen> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: resourceGroups.entries.map((group) {
+        children: GameSettings.resourceGroups.entries.map((group) {
           final resources = group.value
               .where((resource) => (_resources[resource] ?? 0) > 0)
               .toList();
@@ -441,14 +445,16 @@ class _RoomScreenState extends State<RoomScreen> {
 
   // 获取火堆颜色
   Color _getFireColor() {
-    switch (_fireLevel) {
-      case 0:
+    String colorName =
+        GameSettings.fireConfigs['colors']![_fireLevel.toString()]!;
+    switch (colorName) {
+      case 'grey700':
         return Colors.grey.shade700;
-      case 1:
+      case 'orange300':
         return Colors.orange.shade300;
-      case 2:
+      case 'orange':
         return Colors.orange;
-      case 3:
+      case 'deepOrange':
         return Colors.deepOrange;
       default:
         return Colors.grey;
@@ -457,18 +463,7 @@ class _RoomScreenState extends State<RoomScreen> {
 
   // 获取火堆描述
   String _getFireDescription() {
-    switch (_fireLevel) {
-      case 0:
-        return '这里很黑，很冷。\n需要生火。';
-      case 1:
-        return '火堆噼啪作响。';
-      case 2:
-        return '火堆燃烧得很好。';
-      case 3:
-        return '火堆熊熊燃烧。';
-      default:
-        return '';
-    }
+    return GameSettings.fireConfigs['descriptions']![_fireLevel.toString()]!;
   }
 
   // 构建日志视图

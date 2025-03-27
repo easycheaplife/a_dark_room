@@ -248,4 +248,568 @@ class GameSettings {
         };
     }
   }
+
+  // 狩猎结果配置
+  static const Map<String, Map<String, dynamic>> huntingOutcomes = {
+    'small_game': {
+      'name': '小型猎物',
+      'outcomes': {
+        'meat': {'min': 100, 'max': 300},
+        'fur': {'min': 100, 'max': 200},
+      },
+      'time': 3, // 狩猎时间（秒）
+    },
+    'large_game': {
+      'name': '大型猎物',
+      'outcomes': {
+        'meat': {'min': 3, 'max': 8},
+        'fur': {'min': 2, 'max': 4},
+        'teeth': {'min': 0, 'max': 2},
+      },
+      'time': 6,
+      'requires': {'weapons': 1}, // 需要武器
+    },
+    'dangerous_game': {
+      'name': '危险猎物',
+      'outcomes': {
+        'meat': {'min': 5, 'max': 12},
+        'fur': {'min': 3, 'max': 7},
+        'teeth': {'min': 1, 'max': 3},
+        'scales': {'min': 0, 'max': 2},
+      },
+      'time': 10,
+      'requires': {'weapons': 2}, // 需要更好的武器
+    },
+  };
+
+  // 敌人配置
+  static const Map<String, Map<String, dynamic>> enemies = {
+    'wolf': {
+      'name': '狼',
+      'health': 5,
+      'attack': 2,
+      'defense': 1,
+      'loot': ['fur', 'meat'],
+      'loot_chance': 0.7,
+    },
+    'bear': {
+      'name': '熊',
+      'health': 8,
+      'attack': 4,
+      'defense': 2,
+      'loot': ['fur', 'meat'],
+      'loot_chance': 0.8,
+    },
+    'snake': {
+      'name': '毒蛇',
+      'health': 3,
+      'attack': 1,
+      'defense': 0,
+      'loot': ['venom'],
+      'loot_chance': 0.6,
+    },
+    'bat': {
+      'name': '蝙蝠',
+      'health': 2,
+      'attack': 1,
+      'defense': 0,
+      'loot': ['leather'],
+      'loot_chance': 0.5,
+    },
+    'spider': {
+      'name': '蜘蛛',
+      'health': 4,
+      'attack': 2,
+      'defense': 1,
+      'loot': ['silk'],
+      'loot_chance': 0.6,
+    },
+    'crocodile': {
+      'name': '鳄鱼',
+      'health': 7,
+      'attack': 3,
+      'defense': 2,
+      'loot': ['leather', 'teeth'],
+      'loot_chance': 0.7,
+    },
+    'scorpion': {
+      'name': '蝎子',
+      'health': 3,
+      'attack': 2,
+      'defense': 1,
+      'loot': ['venom'],
+      'loot_chance': 0.6,
+    },
+    'ghost': {
+      'name': '幽灵',
+      'health': 6,
+      'attack': 3,
+      'defense': 0,
+      'loot': ['ectoplasm'],
+      'loot_chance': 0.5,
+    },
+  };
+
+  // 战斗系统配置
+  static const Map<String, dynamic> combatConfig = {
+    'in_combat': false,
+    'current_enemy': null,
+    'combat_round': 0,
+    'player_health': 10,
+    'player_max_health': 10,
+    'player_attack': 2,
+    'player_defense': 1,
+    'inventory': [],
+  };
+
+  // 玩家状态配置
+  static const Map<String, dynamic> playerStatsConfig = {
+    'level': 1,
+    'experience': 0,
+    'nextLevelExperience': 100,
+  };
+
+  // 事件系统配置
+  static const Map<String, Map<String, dynamic>> eventConfigs = {
+    'stranger': {
+      'id': 'stranger',
+      'title': '陌生人',
+      'description': '一个陌生人出现在门外。',
+      'requirements': {
+        'buildings': {'hut': 1},
+      },
+      'effects': {},
+      'choices': [
+        {
+          'text': '欢迎',
+          'effects': {
+            'population': 1,
+            'happiness': 5,
+          },
+        },
+        {
+          'text': '赶走',
+          'effects': {
+            'happiness': -5,
+          },
+        },
+      ],
+    },
+    'trader': {
+      'id': 'trader',
+      'title': '商人',
+      'description': '一个商人想要交易。',
+      'requirements': {
+        'buildings': {'trading_post': 1},
+      },
+      'effects': {},
+      'choices': [
+        {
+          'text': '交易',
+          'effects': {
+            'trade_available': true,
+          },
+        },
+        {
+          'text': '拒绝',
+          'effects': {},
+        },
+      ],
+    },
+    'storm': {
+      'id': 'storm',
+      'title': '暴风雨',
+      'description': '一场暴风雨正在接近。',
+      'requirements': {
+        'outside_unlocked': true,
+      },
+      'effects': {
+        'wood': -10,
+        'happiness': -10,
+      },
+      'choices': null,
+    },
+  };
+
+  // 交易物品配置
+  static const Map<String, Map<String, dynamic>> tradeItemConfigs = {
+    'fur': {
+      'resourceId': 'fur',
+      'name': '毛皮',
+      'basePrice': 10,
+      'priceVariation': 0.3,
+      'maxAmount': 100,
+    },
+    'leather': {
+      'resourceId': 'leather',
+      'name': '皮革',
+      'basePrice': 15,
+      'priceVariation': 0.25,
+      'maxAmount': 100,
+    },
+    'iron': {
+      'resourceId': 'iron',
+      'name': '铁',
+      'basePrice': 20,
+      'priceVariation': 0.2,
+      'maxAmount': 50,
+    },
+    'steel': {
+      'resourceId': 'steel',
+      'name': '钢',
+      'basePrice': 40,
+      'priceVariation': 0.15,
+      'maxAmount': 30,
+    },
+    'cloth': {
+      'resourceId': 'cloth',
+      'name': '布料',
+      'basePrice': 8,
+      'priceVariation': 0.35,
+      'maxAmount': 150,
+    },
+  };
+
+  // 制作配方配置
+  static const Map<String, Map<String, dynamic>> craftingRecipeConfigs = {
+    'cured_meat': {
+      'id': 'cured_meat',
+      'name': '熏肉',
+      'description': '将生肉制成可以长期保存的熏肉',
+      'ingredients': {
+        'meat': 2,
+        'wood': 1,
+      },
+      'outputs': {
+        'cured meat': 1,
+      },
+      'craftingTime': 30,
+      'requirements': {
+        'buildings': {'smokehouse': 1},
+      },
+    },
+    'leather': {
+      'id': 'leather',
+      'name': '皮革',
+      'description': '将毛皮加工成皮革',
+      'ingredients': {
+        'fur': 2,
+        'water': 1,
+      },
+      'outputs': {
+        'leather': 1,
+      },
+      'craftingTime': 20,
+      'requirements': {
+        'buildings': {'tannery': 1},
+      },
+    },
+    'steel': {
+      'id': 'steel',
+      'name': '钢',
+      'description': '将铁和煤炼制成钢',
+      'ingredients': {
+        'iron': 2,
+        'coal': 1,
+      },
+      'outputs': {
+        'steel': 1,
+      },
+      'craftingTime': 40,
+      'requirements': {
+        'buildings': {'steelworks': 1},
+      },
+    },
+    'cloth': {
+      'id': 'cloth',
+      'name': '布料',
+      'description': '将毛皮制成布料',
+      'ingredients': {
+        'fur': 3,
+        'water': 2,
+      },
+      'outputs': {
+        'cloth': 1,
+      },
+      'craftingTime': 25,
+      'requirements': {
+        'buildings': {'workshop': 1},
+      },
+    },
+    'rope': {
+      'id': 'rope',
+      'name': '绳索',
+      'description': '用布料制作结实的绳索',
+      'ingredients': {
+        'cloth': 2,
+        'leather': 1,
+      },
+      'outputs': {
+        'rope': 1,
+      },
+      'craftingTime': 15,
+      'requirements': {
+        'buildings': {'workshop': 1},
+      },
+    },
+    'medicine': {
+      'id': 'medicine',
+      'name': '药品',
+      'description': '用草药制作治疗药品',
+      'ingredients': {
+        'herbs': 3,
+        'water': 1,
+      },
+      'outputs': {
+        'medicine': 1,
+      },
+      'craftingTime': 20,
+      'requirements': {
+        'buildings': {'workshop': 1},
+      },
+    },
+    'sword': {
+      'id': 'sword',
+      'name': '剑',
+      'description': '制作一把锋利的剑',
+      'ingredients': {
+        'steel': 2,
+        'wood': 1,
+        'leather': 1,
+      },
+      'outputs': {
+        'sword': 1,
+      },
+      'craftingTime': 45,
+      'requirements': {
+        'buildings': {'workshop': 1},
+      },
+    },
+    'armor': {
+      'id': 'armor',
+      'name': '盔甲',
+      'description': '制作一套防护盔甲',
+      'ingredients': {
+        'steel': 3,
+        'leather': 2,
+        'cloth': 1,
+      },
+      'outputs': {
+        'armor': 1,
+      },
+      'craftingTime': 60,
+      'requirements': {
+        'buildings': {'workshop': 1},
+      },
+    },
+    'gunpowder': {
+      'id': 'gunpowder',
+      'name': '火药',
+      'description': '制作火药',
+      'ingredients': {
+        'sulphur': 2,
+        'coal': 1,
+      },
+      'outputs': {
+        'gunpowder': 1,
+      },
+      'craftingTime': 30,
+      'requirements': {
+        'buildings': {'workshop': 1},
+      },
+    },
+    'bullet': {
+      'id': 'bullet',
+      'name': '子弹',
+      'description': '制作子弹',
+      'ingredients': {
+        'steel': 1,
+        'gunpowder': 1,
+      },
+      'outputs': {
+        'bullet': 5,
+      },
+      'craftingTime': 20,
+      'requirements': {
+        'buildings': {'workshop': 1},
+      },
+    },
+    'gun': {
+      'id': 'gun',
+      'name': '枪',
+      'description': '制作一把枪',
+      'ingredients': {
+        'steel': 3,
+        'wood': 2,
+        'gunpowder': 1,
+      },
+      'outputs': {
+        'gun': 1,
+      },
+      'craftingTime': 75,
+      'requirements': {
+        'buildings': {'workshop': 1},
+      },
+    },
+  };
+
+  // UI配置
+  static const Map<String, List<String>> resourceGroups = {
+    '基础资源': ['wood', 'meat', 'water'],
+    '狩猎资源': ['fur', 'scales', 'teeth', 'leather'],
+    '制作材料': ['cloth', 'herbs', 'coal', 'iron', 'steel', 'sulphur'],
+    '食物': ['cured meat'],
+  };
+
+  static const Map<String, Map<String, dynamic>> locationConfigs = {
+    'cave': {
+      'name': '洞穴',
+      'description': '一个黑暗的洞穴，可能藏有宝藏。',
+      'resources': ['coal', 'iron', 'sulphur'],
+      'dangers': ['bat', 'spider'],
+      'exploration_time': 30,
+      'scavenging_time': 20,
+      'hunting_time': 15,
+    },
+    'river': {
+      'name': '河流',
+      'description': '一条清澈的河流，有丰富的鱼类资源。',
+      'resources': ['water', 'fish'],
+      'dangers': ['crocodile'],
+      'exploration_time': 30,
+      'scavenging_time': 20,
+      'hunting_time': 15,
+    },
+    'mountain': {
+      'name': '山脉',
+      'description': '陡峭的山脉，富含矿物。',
+      'resources': ['iron', 'coal', 'stone'],
+      'dangers': ['bear'],
+      'exploration_time': 30,
+      'scavenging_time': 20,
+      'hunting_time': 15,
+    },
+    'desert': {
+      'name': '沙漠',
+      'description': '一片荒芜的沙漠，有稀有的资源。',
+      'resources': ['sand', 'cactus'],
+      'dangers': ['scorpion'],
+      'exploration_time': 30,
+      'scavenging_time': 20,
+      'hunting_time': 15,
+    },
+    'swamp': {
+      'name': '沼泽',
+      'description': '潮湿的沼泽地，有独特的资源。',
+      'resources': ['herbs', 'mushroom'],
+      'dangers': ['snake'],
+      'exploration_time': 30,
+      'scavenging_time': 20,
+      'hunting_time': 15,
+    },
+    'ruins': {
+      'name': '废墟',
+      'description': '古老的废墟，可能藏有珍贵的物品。',
+      'resources': ['scrap', 'artifact'],
+      'dangers': ['ghost'],
+      'exploration_time': 30,
+      'scavenging_time': 20,
+      'hunting_time': 15,
+    },
+  };
+
+  static const List<String> possibleLocations = [
+    'cave',
+    'river',
+    'mountain',
+    'desert',
+    'swamp',
+    'ruins',
+  ];
+
+  static const Map<String, Map<String, dynamic>> fireConfigs = {
+    'colors': {
+      '0': 'grey700',
+      '1': 'orange300',
+      '2': 'orange',
+      '3': 'deepOrange',
+    },
+    'descriptions': {
+      '0': '这里很黑，很冷。\n需要生火。',
+      '1': '火堆噼啪作响。',
+      '2': '火堆燃烧得很好。',
+      '3': '火堆熊熊燃烧。',
+    },
+  };
+
+  // 初始资源值
+  static const Map<String, int> initialResources = {
+    'wood': 1,
+    'fur': 0,
+    'meat': 0,
+    'scales': 0,
+    'teeth': 0,
+    'leather': 0,
+    'cloth': 0,
+    'herbs': 0,
+    'coal': 0,
+    'iron': 0,
+    'steel': 0,
+    'sulphur': 0,
+    'cured meat': 0,
+    'water': 0,
+    'money': 100,
+  };
+
+  // 资源生产和效率配置
+  static const Map<String, double> resourceProductionMultipliers = {
+    'iron': 1.0,
+    'steel': 1.0,
+    'wood': 1.0,
+    'coal': 1.0,
+  };
+
+  static const Map<String, double> resourceEfficiency = {
+    'iron': 1.0,
+    'steel': 1.0,
+    'wood': 1.0,
+    'coal': 1.0,
+  };
+
+  // 存档配置
+  static const String SAVE_DIRECTORY = 'saves';
+  static const int MAX_SAVE_SLOTS = 3;
+
+  // 战斗系统初始状态
+  static const Map<String, dynamic> initialCombatState = {
+    'inCombat': false,
+    'currentEnemy': null,
+    'enemyHealth': 0,
+    'playerHealth': 0,
+    'turnsLeft': 0,
+  };
+
+  // 资源收集配置
+  static const Map<String, Map<String, dynamic>> resourceGatheringConfigs = {
+    'wood': {
+      'base_amount': 1,
+      'time': 5, // 收集时间（秒）
+      'tool_multiplier': 1.5, // 使用工具时的倍率
+    },
+    'water': {
+      'base_amount': 1,
+      'time': 3,
+      'tool_multiplier': 1.2,
+    },
+    'herbs': {
+      'base_amount': 1,
+      'time': 4,
+      'tool_multiplier': 1.3,
+    },
+    'stone': {
+      'base_amount': 1,
+      'time': 6,
+      'tool_multiplier': 1.4,
+    },
+  };
 }

@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'game_state.dart';
+import '../config/game_settings.dart';
 
 class Choice {
   final String text;
@@ -11,6 +12,16 @@ class Choice {
     required this.effects,
     this.requirements,
   });
+
+  factory Choice.fromJson(Map<String, dynamic> json) {
+    return Choice(
+      text: json['text'] as String,
+      effects: Map<String, dynamic>.from(json['effects']),
+      requirements: json['requirements'] != null
+          ? Map<String, dynamic>.from(json['requirements'])
+          : null,
+    );
+  }
 }
 
 class GameEvent {
@@ -29,6 +40,21 @@ class GameEvent {
     required this.effects,
     this.choices,
   });
+
+  factory GameEvent.fromJson(Map<String, dynamic> json) {
+    return GameEvent(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      description: json['description'] as String,
+      requirements: Map<String, dynamic>.from(json['requirements']),
+      effects: Map<String, dynamic>.from(json['effects']),
+      choices: json['choices'] != null
+          ? (json['choices'] as List)
+              .map((choice) => Choice.fromJson(choice))
+              .toList()
+          : null,
+    );
+  }
 }
 
 class EventSystem {
@@ -36,66 +62,9 @@ class EventSystem {
   List<String> eventHistory = [];
   Map<String, bool> eventFlags = {};
 
-  final Map<String, GameEvent> events = {
-    'stranger': GameEvent(
-      id: 'stranger',
-      title: '陌生人',
-      description: '一个陌生人出现在门外。',
-      requirements: {
-        'buildings': {'hut': 1},
-      },
-      effects: {},
-      choices: [
-        Choice(
-          text: '欢迎',
-          effects: {
-            'population': 1,
-            'happiness': 5,
-          },
-        ),
-        Choice(
-          text: '赶走',
-          effects: {
-            'happiness': -5,
-          },
-        ),
-      ],
-    ),
-    'trader': GameEvent(
-      id: 'trader',
-      title: '商人',
-      description: '一个商人想要交易。',
-      requirements: {
-        'buildings': {'trading_post': 1},
-      },
-      effects: {},
-      choices: [
-        Choice(
-          text: '交易',
-          effects: {
-            'trade_available': true,
-          },
-        ),
-        Choice(
-          text: '拒绝',
-          effects: {},
-        ),
-      ],
-    ),
-    'storm': GameEvent(
-      id: 'storm',
-      title: '暴风雨',
-      description: '一场暴风雨正在接近。',
-      requirements: {
-        'outside_unlocked': true,
-      },
-      effects: {
-        'wood': -10,
-        'happiness': -10,
-      },
-      choices: null,
-    ),
-  };
+  final Map<String, GameEvent> events = GameSettings.eventConfigs.map(
+    (key, value) => MapEntry(key, GameEvent.fromJson(value)),
+  );
 
   final Random _random = Random();
 

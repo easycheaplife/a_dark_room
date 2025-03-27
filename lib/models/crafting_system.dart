@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'game_state.dart';
 import 'dart:async';
+import '../config/game_settings.dart';
 
 class CraftingRecipe {
   final String id;
@@ -20,190 +21,27 @@ class CraftingRecipe {
     required this.craftingTime,
     this.requirements,
   });
+
+  factory CraftingRecipe.fromJson(Map<String, dynamic> json) {
+    return CraftingRecipe(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      description: json['description'] as String,
+      ingredients: Map<String, int>.from(json['ingredients']),
+      outputs: Map<String, int>.from(json['outputs']),
+      craftingTime: json['craftingTime'] as int,
+      requirements: json['requirements'] != null
+          ? Map<String, dynamic>.from(json['requirements'])
+          : null,
+    );
+  }
 }
 
 class CraftingSystem {
-  final Map<String, CraftingRecipe> recipes = {
-    'cured_meat': CraftingRecipe(
-      id: 'cured_meat',
-      name: '熏肉',
-      description: '将生肉制成可以长期保存的熏肉',
-      ingredients: {
-        'meat': 2,
-        'wood': 1,
-      },
-      outputs: {
-        'cured meat': 1,
-      },
-      craftingTime: 30,
-      requirements: {
-        'buildings': {'smokehouse': 1},
-      },
-    ),
-    'leather': CraftingRecipe(
-      id: 'leather',
-      name: '皮革',
-      description: '将毛皮加工成皮革',
-      ingredients: {
-        'fur': 2,
-        'water': 1,
-      },
-      outputs: {
-        'leather': 1,
-      },
-      craftingTime: 20,
-      requirements: {
-        'buildings': {'tannery': 1},
-      },
-    ),
-    'steel': CraftingRecipe(
-      id: 'steel',
-      name: '钢',
-      description: '将铁和煤炼制成钢',
-      ingredients: {
-        'iron': 2,
-        'coal': 1,
-      },
-      outputs: {
-        'steel': 1,
-      },
-      craftingTime: 40,
-      requirements: {
-        'buildings': {'steelworks': 1},
-      },
-    ),
-    'cloth': CraftingRecipe(
-      id: 'cloth',
-      name: '布料',
-      description: '将毛皮制成布料',
-      ingredients: {
-        'fur': 3,
-        'water': 2,
-      },
-      outputs: {
-        'cloth': 1,
-      },
-      craftingTime: 25,
-      requirements: {
-        'buildings': {'workshop': 1},
-      },
-    ),
-    'rope': CraftingRecipe(
-      id: 'rope',
-      name: '绳索',
-      description: '用布料制作结实的绳索',
-      ingredients: {
-        'cloth': 2,
-        'leather': 1,
-      },
-      outputs: {
-        'rope': 1,
-      },
-      craftingTime: 15,
-      requirements: {
-        'buildings': {'workshop': 1},
-      },
-    ),
-    'medicine': CraftingRecipe(
-      id: 'medicine',
-      name: '药品',
-      description: '用草药制作治疗药品',
-      ingredients: {
-        'herbs': 3,
-        'water': 1,
-      },
-      outputs: {
-        'medicine': 1,
-      },
-      craftingTime: 20,
-      requirements: {
-        'buildings': {'workshop': 1},
-      },
-    ),
-    'sword': CraftingRecipe(
-      id: 'sword',
-      name: '剑',
-      description: '制作一把锋利的剑',
-      ingredients: {
-        'steel': 2,
-        'wood': 1,
-        'leather': 1,
-      },
-      outputs: {
-        'sword': 1,
-      },
-      craftingTime: 45,
-      requirements: {
-        'buildings': {'workshop': 1},
-      },
-    ),
-    'armor': CraftingRecipe(
-      id: 'armor',
-      name: '盔甲',
-      description: '制作一套防护盔甲',
-      ingredients: {
-        'steel': 3,
-        'leather': 2,
-        'cloth': 1,
-      },
-      outputs: {
-        'armor': 1,
-      },
-      craftingTime: 60,
-      requirements: {
-        'buildings': {'workshop': 1},
-      },
-    ),
-    'gunpowder': CraftingRecipe(
-      id: 'gunpowder',
-      name: '火药',
-      description: '制作火药',
-      ingredients: {
-        'sulphur': 2,
-        'coal': 1,
-      },
-      outputs: {
-        'gunpowder': 1,
-      },
-      craftingTime: 30,
-      requirements: {
-        'buildings': {'workshop': 1},
-      },
-    ),
-    'bullet': CraftingRecipe(
-      id: 'bullet',
-      name: '子弹',
-      description: '制作子弹',
-      ingredients: {
-        'steel': 1,
-        'gunpowder': 1,
-      },
-      outputs: {
-        'bullet': 5,
-      },
-      craftingTime: 20,
-      requirements: {
-        'buildings': {'workshop': 1},
-      },
-    ),
-    'gun': CraftingRecipe(
-      id: 'gun',
-      name: '枪',
-      description: '制作一把枪',
-      ingredients: {
-        'steel': 3,
-        'wood': 2,
-        'gunpowder': 1,
-      },
-      outputs: {
-        'gun': 1,
-      },
-      craftingTime: 75,
-      requirements: {
-        'buildings': {'workshop': 1},
-      },
-    ),
-  };
+  final Map<String, CraftingRecipe> recipes =
+      GameSettings.craftingRecipeConfigs.map(
+    (key, value) => MapEntry(key, CraftingRecipe.fromJson(value)),
+  );
 
   // 添加制作进度追踪
   Map<String, DateTime> _activeCrafting = {};

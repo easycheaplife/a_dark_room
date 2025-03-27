@@ -1,4 +1,5 @@
 import 'dart:math';
+import '../config/game_settings.dart';
 
 class TradeItem {
   final String resourceId;
@@ -14,46 +15,22 @@ class TradeItem {
     this.priceVariation = 0.2,
     this.maxAmount = 100,
   });
+
+  factory TradeItem.fromJson(Map<String, dynamic> json) {
+    return TradeItem(
+      resourceId: json['resourceId'] as String,
+      name: json['name'] as String,
+      basePrice: json['basePrice'] as int,
+      priceVariation: json['priceVariation'] as double,
+      maxAmount: json['maxAmount'] as int,
+    );
+  }
 }
 
 class TradeSystem {
-  final Map<String, TradeItem> tradeItems = {
-    'fur': TradeItem(
-      resourceId: 'fur',
-      name: '毛皮',
-      basePrice: 10,
-      priceVariation: 0.3,
-      maxAmount: 100,
-    ),
-    'leather': TradeItem(
-      resourceId: 'leather',
-      name: '皮革',
-      basePrice: 15,
-      priceVariation: 0.25,
-      maxAmount: 100,
-    ),
-    'iron': TradeItem(
-      resourceId: 'iron',
-      name: '铁',
-      basePrice: 20,
-      priceVariation: 0.2,
-      maxAmount: 50,
-    ),
-    'steel': TradeItem(
-      resourceId: 'steel',
-      name: '钢',
-      basePrice: 40,
-      priceVariation: 0.15,
-      maxAmount: 30,
-    ),
-    'cloth': TradeItem(
-      resourceId: 'cloth',
-      name: '布料',
-      basePrice: 8,
-      priceVariation: 0.35,
-      maxAmount: 150,
-    ),
-  };
+  final Map<String, TradeItem> tradeItems = GameSettings.tradeItemConfigs.map(
+    (key, value) => MapEntry(key, TradeItem.fromJson(value)),
+  );
 
   Map<String, int> currentPrices = {};
   DateTime lastPriceUpdate = DateTime.now();

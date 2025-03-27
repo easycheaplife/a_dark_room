@@ -15,22 +15,8 @@ class GameState extends ChangeNotifier {
   String currentLocation = 'room'; // 当前位置：起始为room
 
   // 资源管理
-  Map<String, int> resources = {
-    'wood': 0,
-    'fur': 0,
-    'meat': 0,
-    'scales': 0,
-    'teeth': 0,
-    'leather': 0,
-    'cloth': 0,
-    'herbs': 0,
-    'coal': 0,
-    'iron': 0,
-    'steel': 0,
-    'sulphur': 0,
-    'cured meat': 0,
-    'water': 0
-  };
+  Map<String, int> resources =
+      Map<String, int>.from(GameSettings.initialResources);
 
   // 资源存储上限
   Map<String, int> resourceLimits = GameSettings.resourceLimits;
@@ -299,37 +285,8 @@ class GameState extends ChangeNotifier {
   }
 
   // 狩猎相关的配置
-  final Map<String, Map<String, dynamic>> huntingOutcomes = {
-    'small_game': {
-      'name': '小型猎物',
-      'outcomes': {
-        'meat': {'min': 100, 'max': 300},
-        'fur': {'min': 100, 'max': 200},
-      },
-      'time': 3, // 狩猎时间（秒）
-    },
-    'large_game': {
-      'name': '大型猎物',
-      'outcomes': {
-        'meat': {'min': 3, 'max': 8},
-        'fur': {'min': 2, 'max': 4},
-        'teeth': {'min': 0, 'max': 2},
-      },
-      'time': 6,
-      'requires': {'weapons': 1}, // 需要武器
-    },
-    'dangerous_game': {
-      'name': '危险猎物',
-      'outcomes': {
-        'meat': {'min': 5, 'max': 12},
-        'fur': {'min': 3, 'max': 7},
-        'teeth': {'min': 1, 'max': 3},
-        'scales': {'min': 0, 'max': 2},
-      },
-      'time': 10,
-      'requires': {'weapons': 2}, // 需要更好的武器
-    },
-  };
+  final Map<String, Map<String, dynamic>> huntingOutcomes =
+      GameSettings.huntingOutcomes;
 
   // 狩猎状态
   bool isHunting = false;
@@ -412,11 +369,7 @@ class GameState extends ChangeNotifier {
     currentLocation = 'room'; // 确保初始化当前位置
 
     // 初始化资源
-    resources = {
-      'wood': 0,
-      'water': 0,
-      // ... 其他资源初始化 ...
-    };
+    resources = Map<String, int>.from(GameSettings.initialResources);
 
     // 初始化定时器
     _waterTimer = Timer.periodic(Duration(seconds: 10), (timer) {
@@ -890,19 +843,10 @@ class GameState extends ChangeNotifier {
   }
 
   // 添加资源生产和效率相关的字段
-  Map<String, double> resourceProductionMultipliers = {
-    'iron': 1.0,
-    'steel': 1.0,
-    'wood': 1.0,
-    'coal': 1.0,
-  };
-
-  Map<String, double> resourceEfficiency = {
-    'iron': 1.0,
-    'steel': 1.0,
-    'wood': 1.0,
-    'coal': 1.0,
-  };
+  Map<String, double> resourceProductionMultipliers =
+      Map<String, double>.from(GameSettings.resourceProductionMultipliers);
+  Map<String, double> resourceEfficiency =
+      Map<String, double>.from(GameSettings.resourceEfficiency);
 
   // 添加建筑解锁检查
   bool isBuildingUnlocked(String buildingId) {
@@ -927,8 +871,8 @@ class GameState extends ChangeNotifier {
   }
 
   // 添加存档相关字段
-  static const String SAVE_DIRECTORY = 'saves';
-  static const int MAX_SAVE_SLOTS = 3;
+  static const String SAVE_DIRECTORY = GameSettings.SAVE_DIRECTORY;
+  static const int MAX_SAVE_SLOTS = GameSettings.MAX_SAVE_SLOTS;
   String currentSaveSlot = 'slot1';
 
   // 获取存档目录
@@ -1218,22 +1162,7 @@ class GameState extends ChangeNotifier {
     craftingUnlocked = false;
 
     // 重置资源
-    resources = {
-      'wood': 0,
-      'fur': 0,
-      'meat': 0,
-      'scales': 0,
-      'teeth': 0,
-      'leather': 0,
-      'cloth': 0,
-      'herbs': 0,
-      'coal': 0,
-      'iron': 0,
-      'steel': 0,
-      'sulphur': 0,
-      'cured meat': 0,
-      'water': 0
-    };
+    resources = Map<String, int>.from(GameSettings.initialResources);
 
     // 重置房间状态
     room = {
@@ -1289,84 +1218,11 @@ class GameState extends ChangeNotifier {
   }
 
   // 战斗系统
-  Map<String, dynamic> combat = {
-    'in_combat': false,
-    'current_enemy': null,
-    'combat_round': 0,
-    'player_health': 10,
-    'player_max_health': 10,
-    'player_attack': 2,
-    'player_defense': 1,
-    'inventory': [],
-  };
+  Map<String, dynamic> combat =
+      Map<String, dynamic>.from(GameSettings.combatConfig);
 
   // 敌人配置
-  final Map<String, Map<String, dynamic>> enemies = {
-    'wolf': {
-      'name': '狼',
-      'health': 5,
-      'attack': 2,
-      'defense': 1,
-      'loot': ['fur', 'meat'],
-      'loot_chance': 0.7,
-    },
-    'bear': {
-      'name': '熊',
-      'health': 8,
-      'attack': 4,
-      'defense': 2,
-      'loot': ['fur', 'meat'],
-      'loot_chance': 0.8,
-    },
-    'snake': {
-      'name': '毒蛇',
-      'health': 3,
-      'attack': 1,
-      'defense': 0,
-      'loot': ['venom'],
-      'loot_chance': 0.6,
-    },
-    'bat': {
-      'name': '蝙蝠',
-      'health': 2,
-      'attack': 1,
-      'defense': 0,
-      'loot': ['leather'],
-      'loot_chance': 0.5,
-    },
-    'spider': {
-      'name': '蜘蛛',
-      'health': 4,
-      'attack': 2,
-      'defense': 1,
-      'loot': ['silk'],
-      'loot_chance': 0.6,
-    },
-    'crocodile': {
-      'name': '鳄鱼',
-      'health': 7,
-      'attack': 3,
-      'defense': 2,
-      'loot': ['leather', 'teeth'],
-      'loot_chance': 0.7,
-    },
-    'scorpion': {
-      'name': '蝎子',
-      'health': 3,
-      'attack': 2,
-      'defense': 1,
-      'loot': ['venom'],
-      'loot_chance': 0.6,
-    },
-    'ghost': {
-      'name': '幽灵',
-      'health': 6,
-      'attack': 3,
-      'defense': 0,
-      'loot': ['ectoplasm'],
-      'loot_chance': 0.5,
-    },
-  };
+  final Map<String, Map<String, dynamic>> enemies = GameSettings.enemies;
 
   // 开始战斗
   bool startCombat(String enemyId) {
@@ -1480,11 +1336,8 @@ class GameState extends ChangeNotifier {
   }
 
   // 玩家等级和经验
-  Map<String, dynamic> _playerStats = {
-    'level': 1,
-    'experience': 0,
-    'nextLevelExperience': 100,
-  };
+  Map<String, dynamic> _playerStats =
+      Map<String, dynamic>.from(GameSettings.playerStatsConfig);
 
   // 获取玩家等级
   int get level => _playerStats['level'] as int;
