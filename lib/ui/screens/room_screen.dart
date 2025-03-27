@@ -296,30 +296,54 @@ class _RoomScreenState extends State<RoomScreen> {
         title: Text(roomTempText),
         backgroundColor: Colors.brown.shade800,
         actions: [
-          // 开发者菜单按钮，仅在开发模式下显示
-          if (kDebugMode)
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.bug_report),
-              tooltip: '开发者菜单',
-              onSelected: (String value) {
-                switch (value) {
-                  case 'path':
-                    DevTools.quickJumpToPath(widget.gameState);
-                    break;
-                  case 'world':
-                    DevTools.quickJumpToWorld(widget.gameState);
-                    break;
-                  case 'resources':
-                    DevTools.addUnlimitedResources(widget.gameState);
-                    _showMessage('已添加资源');
-                    break;
-                  case 'unlock':
-                    DevTools.unlockAllFeatures(widget.gameState);
-                    _showMessage('已解锁所有功能');
-                    break;
-                }
-              },
-              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+          // 游戏菜单按钮，合并开发者和游戏功能
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.menu),
+            tooltip: '游戏菜单',
+            onSelected: (String value) {
+              switch (value) {
+                case 'outside':
+                  widget.gameState.currentLocation = 'outside';
+                  widget.gameState.notifyListeners();
+                  break;
+                case 'explore':
+                  _explorePathAction();
+                  break;
+                case 'path':
+                  DevTools.quickJumpToPath(widget.gameState);
+                  break;
+                case 'world':
+                  DevTools.quickJumpToWorld(widget.gameState);
+                  break;
+                case 'resources':
+                  DevTools.addUnlimitedResources(widget.gameState);
+                  _showMessage('已添加资源');
+                  break;
+                case 'unlock':
+                  DevTools.unlockAllFeatures(widget.gameState);
+                  _showMessage('已解锁所有功能');
+                  break;
+              }
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              // 游戏功能
+              if (widget.gameState.outsideUnlocked)
+                const PopupMenuItem<String>(
+                  value: 'outside',
+                  child: Text('前往荒野'),
+                ),
+              if (widget.gameState.storeOpened)
+                const PopupMenuItem<String>(
+                  value: 'explore',
+                  child: Text('探索路径'),
+                ),
+              // 分隔线
+              if ((widget.gameState.outsideUnlocked ||
+                      widget.gameState.storeOpened) &&
+                  (kDebugMode || GameSettings.DEV_MODE))
+                const PopupMenuDivider(),
+              // 开发者功能
+              if (kDebugMode || GameSettings.DEV_MODE) ...[
                 const PopupMenuItem<String>(
                   value: 'path',
                   child: Text('测试路径系统'),
@@ -337,25 +361,9 @@ class _RoomScreenState extends State<RoomScreen> {
                   child: Text('解锁所有功能'),
                 ),
               ],
-            ),
-          if (widget.gameState.outsideUnlocked)
-            IconButton(
-              icon: const Icon(Icons.nature_people),
-              tooltip: '前往荒野',
-              onPressed: () {
-                widget.gameState.currentLocation = 'outside';
-                widget.gameState.notifyListeners();
-              },
-            ),
-          if (widget.gameState.storeOpened)
-            IconButton(
-              icon: const Icon(Icons.map),
-              tooltip: '探索路径',
-              onPressed: () {
-                widget.gameState.currentLocation = 'path';
-                widget.gameState.notifyListeners();
-              },
-            ),
+            ],
+          ),
+          // 保存按钮保留
           IconButton(
             icon: const Icon(Icons.save),
             tooltip: '保存游戏',
@@ -1637,5 +1645,36 @@ class _RoomScreenState extends State<RoomScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
+  }
+
+  // 探索路径方法
+  void _explorePathAction() {
+    try {
+      // 确保路径系统初始化
+      if (widget.gameState.pathSystem == null) {
+        throw Exception('路径系统未初始化');
+      }
+
+      // 添加基础物资
+      widget.gameState.addResource('cured meat', 10);
+      widget.gameState.addResource('bullets', 5);
+      widget.gameState.addResource('medicine', 3);
+
+      // 切换到路径界面
+      widget.gameState.currentLocation = 'path';
+      widget.gameState.notifyListeners();
+      _showMessage('正在前往探索路径...');
+
+      if (kDebugMode) {
+        print('已切换到路径系统');
+        print(
+            '路径系统状态: ${widget.gameState.pathSystem != null ? "已初始化" : "未初始化"}');
+      }
+    } catch (e) {
+      _showMessage('无法进入探索: $e');
+      if (kDebugMode) {
+        print('路径系统错误: $e');
+      }
+    }
   }
 }

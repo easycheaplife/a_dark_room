@@ -211,7 +211,7 @@ class GameState extends ChangeNotifier {
   final WorldSystem worldSystem = WorldSystem();
 
   // 添加路径系统
-  final PathSystem pathSystem = PathSystem();
+  late PathSystem pathSystem;
 
   // 初始化事件系统
   void initEventSystem() {
@@ -388,6 +388,9 @@ class GameState extends ChangeNotifier {
 
     // 初始化自动存档定时器
     _initAutoSave();
+
+    // 初始化路径系统
+    pathSystem = PathSystem();
 
     // ... 其他初始化代码 ...
   }
@@ -1399,5 +1402,38 @@ class GameState extends ChangeNotifier {
 
     // 通知升级事件
     notifyListeners();
+  }
+
+  // 出发前准备
+  bool embarkonPath() {
+    if (!pathSystem.canEmbark()) {
+      if (kDebugMode) {
+        print('无法出发: 背包中没有足够的食物');
+      }
+      return false;
+    }
+
+    // 清空背包中的物品（但扣除实际游戏资源）
+    Map<String, int> outfitCopy = Map<String, int>.from(pathSystem.outfit);
+
+    // 扣除资源
+    outfitCopy.forEach((itemId, quantity) {
+      if (resources.containsKey(itemId) && resources[itemId]! >= quantity) {
+        resources[itemId] = resources[itemId]! - quantity;
+      }
+    });
+
+    // 触发embark
+    pathSystem.embark();
+
+    // 切换到世界地图
+    currentLocation = 'world';
+    notifyListeners();
+
+    if (kDebugMode) {
+      print('出发成功，已扣除背包中的物品');
+    }
+
+    return true;
   }
 }

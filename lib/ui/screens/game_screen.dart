@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../engine/game_engine.dart';
 import 'room_screen.dart';
 import 'outside_screen.dart';
 import '../../models/game_state.dart';
 import 'world_screen.dart';
-import 'outfit_screen.dart';
+import 'path_screen.dart';
+import 'package:flutter/foundation.dart';
 
 /// 游戏主屏幕，根据游戏状态显示不同的游戏区域
 class GameScreen extends StatefulWidget {
@@ -20,7 +20,6 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
-  final GameEngine _engine = GameEngine();
   bool _outsideUnlocked = false;
   int _currentIndex = 0; // 改为可变
 
@@ -60,22 +59,19 @@ class _GameScreenState extends State<GameScreen> {
         return RoomScreen(gameState: widget.gameState);
       case 'outside':
         return OutsideScreen(gameState: widget.gameState);
+      case 'path':
+        if (kDebugMode) {
+          print('切换到路径屏幕');
+        }
+        return PathScreen(gameState: widget.gameState);
       case 'world':
+        if (kDebugMode) {
+          print('切换到世界屏幕');
+        }
         return WorldScreen(
           gameState: widget.gameState,
           pathSystem: widget.gameState.pathSystem,
           worldSystem: widget.gameState.worldSystem,
-        );
-      case 'path':
-        return OutfitScreen(
-          gameState: widget.gameState,
-          pathSystem: widget.gameState.pathSystem,
-          worldSystem: widget.gameState.worldSystem,
-          onEmbark: () {
-            // 设置位置为世界
-            widget.gameState.currentLocation = 'world';
-            setState(() {});
-          },
         );
       default:
         return RoomScreen(gameState: widget.gameState);

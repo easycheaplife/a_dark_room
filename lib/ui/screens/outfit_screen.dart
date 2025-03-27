@@ -45,6 +45,7 @@ class _OutfitScreenState extends State<OutfitScreen> {
       appBar: AppBar(
         title: const Text('准备出发'),
         backgroundColor: Colors.brown.shade800,
+        automaticallyImplyLeading: false, // 禁用默认的返回按钮
       ),
       backgroundColor: Colors.brown.shade200,
       body: Column(
@@ -67,7 +68,8 @@ class _OutfitScreenState extends State<OutfitScreen> {
   // 构建背包容量指示器
   Widget _buildBagSpaceIndicator() {
     double usedSpace =
-        widget.pathSystem.getCapacity() - widget.pathSystem.getFreeSpace();
+        (widget.pathSystem.getCapacity() - widget.pathSystem.getFreeSpace())
+            .toDouble();
     double capacityPercentage = usedSpace / widget.pathSystem.getCapacity();
 
     return Container(
@@ -114,7 +116,7 @@ class _OutfitScreenState extends State<OutfitScreen> {
             title: Text(_formatItemName(item)),
             subtitle: Row(
               children: [
-                Text('重量: ${widget.pathSystem.getWeight(item)}'),
+                Text('重量: ${widget.pathSystem.getItemWeight(item)}'),
                 const SizedBox(width: 16),
                 Text('可用: ${available}'),
               ],
@@ -128,7 +130,7 @@ class _OutfitScreenState extends State<OutfitScreen> {
                   color: equipped > 0 ? Colors.red : Colors.grey,
                   onPressed: equipped > 0
                       ? () {
-                          widget.pathSystem.removeFromOutfit(item, 1);
+                          widget.pathSystem.decreaseSupply(item);
                           setState(() {});
                         }
                       : null,
@@ -149,14 +151,14 @@ class _OutfitScreenState extends State<OutfitScreen> {
                   icon: const Icon(Icons.add_circle_outline),
                   color: (available > equipped &&
                           widget.pathSystem.getFreeSpace() >=
-                              widget.pathSystem.getWeight(item))
+                              widget.pathSystem.getItemWeight(item))
                       ? Colors.green
                       : Colors.grey,
                   onPressed: (available > equipped &&
                           widget.pathSystem.getFreeSpace() >=
-                              widget.pathSystem.getWeight(item))
+                              widget.pathSystem.getItemWeight(item))
                       ? () {
-                          widget.pathSystem.addToOutfit(item, 1);
+                          widget.pathSystem.increaseSupply(item);
                           setState(() {});
                         }
                       : null,
@@ -187,7 +189,9 @@ class _OutfitScreenState extends State<OutfitScreen> {
               foregroundColor: Colors.white,
             ),
             onPressed: () {
-              Navigator.pop(context);
+              // 不要使用Navigator.pop，而是直接切换到房间
+              widget.gameState.currentLocation = 'room';
+              widget.gameState.notifyListeners();
             },
           ),
 
@@ -201,7 +205,6 @@ class _OutfitScreenState extends State<OutfitScreen> {
             ),
             onPressed: canEmbark
                 ? () {
-                    widget.pathSystem.embark(widget.gameState);
                     widget.onEmbark();
                   }
                 : null,

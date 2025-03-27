@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/game_state.dart';
 import '../config/game_settings.dart';
+import '../models/world_system.dart';
 
 /// 开发者工具类，提供各种调试和测试功能
 class DevTools {
@@ -57,9 +58,19 @@ class DevTools {
 
   /// 解锁所有功能
   static void unlockAllFeatures(GameState gameState) {
+    // 解锁基本功能
     gameState.outsideUnlocked = true;
     gameState.storeOpened = true;
     gameState.craftingUnlocked = true;
+
+    // 初始化世界系统
+    gameState.worldSystem.init();
+
+    // 添加大量基础资源
+    addUnlimitedResources(gameState);
+
+    // 添加金钱
+    gameState.addResource('money', 10000);
 
     // 解锁建筑
     const Map<String, int> buildings = {
@@ -72,11 +83,71 @@ class DevTools {
       'workshop': 1,
       'steelworks': 1,
       'armoury': 1,
+      'trap': 5,
+      'curing rack': 3,
+      'barn': 3,
+      'well': 1,
+      'mine': 3,
+      'coal mine': 3,
+      'iron mine': 3,
+      'sulphur mine': 3,
+      'cement kiln': 1,
+      'torch': 10,
     };
 
     buildings.forEach((building, count) {
       gameState.room['buildings'][building] = count;
+      // 设置建筑等级为最高
+      gameState.buildingLevels[building] = 3;
     });
+
+    // 解锁所有村民类型
+    const Map<String, int> villagers = {
+      'gatherer': 5,
+      'hunter': 5,
+      'trapper': 5,
+      'tanner': 3,
+      'miner': 5,
+      'coal miner': 5,
+      'iron miner': 5,
+      'sulphur miner': 5,
+      'steelworker': 3,
+      'armourer': 3,
+      'smith': 3,
+      'builder': 3,
+      'charcutier': 3,
+    };
+
+    if (gameState.population['workers'] == null) {
+      gameState.population['workers'] = {};
+    }
+
+    villagers.forEach((type, count) {
+      gameState.population['workers'][type] = count;
+    });
+
+    // 设置总人口
+    int totalPopulation = villagers.values.fold(0, (sum, count) => sum + count);
+    gameState.population['total'] = totalPopulation;
+    gameState.population['max'] = totalPopulation + 10;
+    gameState.population['happiness'] = 100;
+
+    // 解锁所有武器和工具
+    gameState.addResource('bone spear', 5);
+    gameState.addResource('iron sword', 3);
+    gameState.addResource('steel sword', 3);
+    gameState.addResource('rifle', 3);
+    gameState.addResource('laser rifle', 1);
+    gameState.addResource('bolas', 5);
+    gameState.addResource('axe', 5);
+    gameState.addResource('steel axe', 3);
+    gameState.addResource('chainsaw', 1);
+    gameState.addResource('rucksack', 3);
+    gameState.addResource('wagon', 1);
+    gameState.addResource('convoy', 1);
+    gameState.addResource('l armour', 3);
+    gameState.addResource('i armour', 3);
+    gameState.addResource('s armour', 3);
 
     if (kDebugMode) {
       print('所有功能已解锁');
@@ -115,35 +186,101 @@ class DevTools {
 
   /// 快速跳转到测试路径系统
   static void quickJumpToPath(GameState gameState) {
+    // 先解锁所有功能确保路径系统正常
+    unlockAllFeatures(gameState);
+
+    // 再设置路径测试专用资源
     setupPathTesting(gameState);
+
+    // 确保路径系统初始化
+    if (gameState.pathSystem == null) {
+      if (kDebugMode) {
+        print('错误: 路径系统未初始化');
+      }
+      return;
+    }
+
+    // 确保物品在背包中为空，准备装配
+    gameState.pathSystem.clearOutfit();
+
+    // 跳转到路径
     gameState.currentLocation = 'path';
     gameState.notifyListeners();
 
     if (kDebugMode) {
       print('已跳转到路径装备界面');
+      print('路径系统状态: ${gameState.pathSystem != null ? "已初始化" : "未初始化"}');
+      print('当前装备: ${gameState.pathSystem.outfit}');
     }
   }
 
   /// 快速跳转到世界地图
   static void quickJumpToWorld(GameState gameState) {
+    // 先解锁所有功能确保路径和世界系统正常
+    unlockAllFeatures(gameState);
+
+    // 再设置路径测试专用资源
     setupPathTesting(gameState);
 
-    // 预填充一些背包物品
-    gameState.pathSystem.outfit['cured meat'] = 10;
-    gameState.pathSystem.outfit['bullets'] = 5;
-    gameState.pathSystem.outfit['medicine'] = 3;
-
-    // 初始化世界地图
-    if (gameState.worldSystem.map.isEmpty) {
-      gameState.worldSystem.init();
+    // 确保路径系统已初始化
+    if (gameState.pathSystem == null) {
+      if (kDebugMode) {
+        print('错误: 路径系统未初始化');
+      }
+      return;
     }
 
-    // 跳转到世界
+    // 确保有足够物品在背包中
+    gameState.pathSystem.clearOutfit();
+    gameState.pathSystem.increaseSupply('cured meat');
+    gameState.pathSystem.increaseSupply('cured meat');
+    gameState.pathSystem.increaseSupply('cured meat');
+    gameState.pathSystem.increaseSupply('cured meat');
+    gameState.pathSystem.increaseSupply('cured meat');
+
+    gameState.pathSystem.increaseSupply('bullets');
+    gameState.pathSystem.increaseSupply('bullets');
+    gameState.pathSystem.increaseSupply('medicine');
+    gameState.pathSystem.increaseSupply('rifle');
+    gameState.pathSystem.increaseSupply('steel sword');
+
+    // 确保世界地图已初始化
+    if (gameState.worldSystem == null) {
+      if (kDebugMode) {
+        print('错误: 世界系统未初始化');
+      }
+      return;
+    }
+
+    // 重置状态
+    gameState.worldSystem.resetWorld();
+
+    // 确保水资源充足
+    gameState.worldSystem.water = WorldSystem.BASE_WATER;
+    gameState.worldSystem.moves = 0;
+    gameState.worldSystem.totalMoveCount = 0;
+
+    // 确保位置正确设置在村庄位置
+    gameState.worldSystem.position = [
+      WorldSystem.VILLAGE_POS[0],
+      WorldSystem.VILLAGE_POS[1]
+    ];
+    gameState.worldSystem.lastPosition =
+        List.from(gameState.worldSystem.position!);
+
+    // 更新可见范围
+    gameState.worldSystem.updateMask();
+
+    // 跳转到世界地图
     gameState.currentLocation = 'world';
     gameState.notifyListeners();
 
     if (kDebugMode) {
       print('已跳转到世界地图');
+      print('世界系统状态: ${gameState.worldSystem != null ? "已初始化" : "未初始化"}');
+      print('玩家位置: ${gameState.worldSystem.position}');
+      print('水量: ${gameState.worldSystem.water}');
+      print('背包内容: ${gameState.pathSystem.outfit}');
     }
   }
 }
