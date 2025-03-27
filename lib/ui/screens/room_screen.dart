@@ -157,6 +157,14 @@ class _RoomScreenState extends State<RoomScreen> {
       '食物': ['cured meat'],
     };
 
+    // 检查是否有任何基础资源
+    bool hasBasicResources = resourceGroups['基础资源']!
+        .any((resource) => (_resources[resource] ?? 0) > 0);
+
+    if (!hasBasicResources) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
@@ -465,6 +473,20 @@ class _RoomScreenState extends State<RoomScreen> {
 
   // 构建日志视图
   Widget _buildGameLog() {
+    // 创建一个ScrollController来控制滚动
+    final ScrollController _scrollController = ScrollController();
+
+    // 使用Future.delayed来确保在构建完成后滚动到底部
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+
     return Container(
       height: 150,
       width: double.infinity,
@@ -477,6 +499,7 @@ class _RoomScreenState extends State<RoomScreen> {
           color: Colors.black,
         ),
         child: ListView.builder(
+          controller: _scrollController,
           itemCount: _logs.length,
           itemBuilder: (context, index) {
             return Padding(

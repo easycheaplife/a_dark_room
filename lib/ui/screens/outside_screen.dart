@@ -490,6 +490,24 @@ class _OutsideScreenState extends State<OutsideScreen> {
 
   // 构建日志视图
   Widget _buildGameLog() {
+    if (_logs.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // 创建一个ScrollController来控制滚动
+    final ScrollController _scrollController = ScrollController();
+
+    // 使用Future.delayed来确保在构建完成后滚动到底部
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+
     return Container(
       height: 150,
       width: double.infinity,
@@ -502,6 +520,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
           color: Colors.black,
         ),
         child: ListView.builder(
+          controller: _scrollController,
           itemCount: _logs.length,
           itemBuilder: (context, index) {
             return Padding(
