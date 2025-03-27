@@ -802,8 +802,9 @@ class _RoomScreenState extends State<RoomScreen> {
       String id, Map<String, dynamic> building, bool canBuild) {
     // 使用LanguageManager获取建筑名称，如果没有则使用默认值
     String name = GameSettings.languageManager.get(id, category: 'buildings');
-    // 对于描述，暂时使用原始值，后期可以考虑添加到翻译文件中
-    String description = building['description'] as String;
+    // 对于描述，使用建筑ID获取对应的描述翻译
+    String description =
+        GameSettings.languageManager.get('${id}_desc', category: 'buildings');
     Map<String, dynamic> cost = building['cost'] as Map<String, dynamic>;
     int currentLevel = widget.gameState.buildingLevels[id] ?? 1;
     bool canUpgrade = widget.gameState.canUpgradeBuilding(id);
@@ -1016,7 +1017,8 @@ class _RoomScreenState extends State<RoomScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    info['description'],
+                    GameSettings.languageManager
+                        .get('${type}_desc', category: 'villagers'),
                     style: TextStyle(
                       color: canRecruit
                           ? Colors.grey.shade300
@@ -1039,7 +1041,7 @@ class _RoomScreenState extends State<RoomScreen> {
                   ? () {
                       if (widget.gameState.recruitVillager(type)) {
                         _addLog(
-                            '招募了一个${GameSettings.languageManager.get(type, category: 'villagers')}。');
+                            '${GameSettings.languageManager.get('recruited', category: 'villagers')} ${GameSettings.languageManager.get(type, category: 'villagers')}.');
                       }
                     }
                   : null,
