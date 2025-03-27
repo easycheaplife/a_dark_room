@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../../models/game_state.dart';
 import '../../models/event_system.dart';
+import '../../models/path_system.dart';
 import '../../config/game_settings.dart';
 import '../../engine/dev_tools.dart';
+import '../../config/language_manager.dart';
 
 /// 房间屏幕 - 游戏的起始区域
 class RoomScreen extends StatefulWidget {
@@ -156,7 +158,8 @@ class _RoomScreenState extends State<RoomScreen> {
   String _formatCost(Map<String, dynamic> cost) {
     List<String> parts = [];
     cost.forEach((resource, amount) {
-      parts.add('$resource: $amount');
+      parts.add(
+          '${GameSettings.languageManager.get(resource, category: 'resources')}: $amount');
     });
     return parts.join(', ');
   }
@@ -208,9 +211,10 @@ class _RoomScreenState extends State<RoomScreen> {
                   final percentage = (amount / limit * 100).round();
 
                   return Tooltip(
-                    message: '$resource: $amount/$limit',
+                    message:
+                        '${GameSettings.languageManager.get(resource, category: 'resources')}: $amount/$limit',
                     child: Text(
-                      '$resource: $amount',
+                      '${GameSettings.languageManager.get(resource, category: 'resources')}: $amount',
                       style: TextStyle(
                         color: percentage >= 90 ? Colors.orange : Colors.white,
                       ),
@@ -244,7 +248,7 @@ class _RoomScreenState extends State<RoomScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '工作状态',
+            GameSettings.languageManager.get('worker_status', category: 'room'),
             style: TextStyle(
               color: Colors.grey.shade400,
               fontSize: 12,
@@ -266,12 +270,12 @@ class _RoomScreenState extends State<RoomScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      '${info['name']}: $count',
+                      '${GameSettings.languageManager.get(type, category: 'villagers')}: $count',
                       style: const TextStyle(color: Colors.white),
                     ),
                   ),
                   Text(
-                    '效率: ${(efficiency * 100).toStringAsFixed(0)}%',
+                    '${GameSettings.languageManager.get('efficiency', category: 'room')}: ${(efficiency * 100).toStringAsFixed(0)}%',
                     style: TextStyle(
                       color: Colors.grey.shade300,
                       fontSize: 12,
@@ -299,7 +303,8 @@ class _RoomScreenState extends State<RoomScreen> {
           // 游戏菜单按钮，合并开发者和游戏功能
           PopupMenuButton<String>(
             icon: const Icon(Icons.menu),
-            tooltip: '游戏菜单',
+            tooltip:
+                GameSettings.languageManager.get('game_menu', category: 'menu'),
             onSelected: (String value) {
               switch (value) {
                 case 'outside':
@@ -317,25 +322,29 @@ class _RoomScreenState extends State<RoomScreen> {
                   break;
                 case 'resources':
                   DevTools.addUnlimitedResources(widget.gameState);
-                  _showMessage('已添加资源');
+                  _showMessage(GameSettings.languageManager
+                      .get('resources_added', category: 'menu'));
                   break;
                 case 'unlock':
                   DevTools.unlockAllFeatures(widget.gameState);
-                  _showMessage('已解锁所有功能');
+                  _showMessage(GameSettings.languageManager
+                      .get('all_unlocked', category: 'menu'));
                   break;
               }
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
               // 游戏功能
               if (widget.gameState.outsideUnlocked)
-                const PopupMenuItem<String>(
+                PopupMenuItem<String>(
                   value: 'outside',
-                  child: Text('前往荒野'),
+                  child: Text(GameSettings.languageManager
+                      .get('go_outside', category: 'menu')),
                 ),
               if (widget.gameState.storeOpened)
-                const PopupMenuItem<String>(
+                PopupMenuItem<String>(
                   value: 'explore',
-                  child: Text('探索路径'),
+                  child: Text(GameSettings.languageManager
+                      .get('explore_path', category: 'menu')),
                 ),
               // 分隔线
               if ((widget.gameState.outsideUnlocked ||
@@ -344,35 +353,66 @@ class _RoomScreenState extends State<RoomScreen> {
                 const PopupMenuDivider(),
               // 开发者功能
               if (kDebugMode || GameSettings.DEV_MODE) ...[
-                const PopupMenuItem<String>(
+                PopupMenuItem<String>(
                   value: 'path',
-                  child: Text('测试路径系统'),
+                  child: Text(GameSettings.languageManager
+                      .get('test_path', category: 'menu')),
                 ),
-                const PopupMenuItem<String>(
+                PopupMenuItem<String>(
                   value: 'world',
-                  child: Text('直接进入世界'),
+                  child: Text(GameSettings.languageManager
+                      .get('enter_world', category: 'menu')),
                 ),
-                const PopupMenuItem<String>(
+                PopupMenuItem<String>(
                   value: 'resources',
-                  child: Text('添加资源'),
+                  child: Text(GameSettings.languageManager
+                      .get('add_resources', category: 'menu')),
                 ),
-                const PopupMenuItem<String>(
+                PopupMenuItem<String>(
                   value: 'unlock',
-                  child: Text('解锁所有功能'),
+                  child: Text(GameSettings.languageManager
+                      .get('unlock_all', category: 'menu')),
                 ),
               ],
             ],
           ),
+
+          // 语言切换按钮
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.language),
+            tooltip:
+                GameSettings.languageManager.get('language', category: 'menu'),
+            onSelected: (String languageCode) {
+              _changeLanguage(languageCode);
+            },
+            itemBuilder: (BuildContext context) =>
+                LanguageManager.SUPPORTED_LANGUAGES.entries.map((entry) {
+              return PopupMenuItem<String>(
+                value: entry.key,
+                child: Row(
+                  children: [
+                    Text(entry.value),
+                    const SizedBox(width: 8),
+                    if (GameSettings.languageManager.currentLanguage ==
+                        entry.key)
+                      const Icon(Icons.check, size: 16)
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+
           // 保存按钮保留
           IconButton(
             icon: const Icon(Icons.save),
-            tooltip: '保存游戏',
+            tooltip:
+                GameSettings.languageManager.get('save', category: 'actions'),
             onPressed: () async {
               try {
                 await widget.gameState.saveGame();
-                _showMessage('游戏已保存');
+                _showMessage(GameSettings.languageManager.get('save_success'));
               } catch (e) {
-                _showMessage('保存失败');
+                _showMessage(GameSettings.languageManager.get('save_failed'));
               }
             },
           ),
@@ -445,7 +485,8 @@ class _RoomScreenState extends State<RoomScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '火堆状态',
+                GameSettings.languageManager
+                    .get('fire_status', category: 'room'),
                 style: TextStyle(
                   color: Colors.grey.shade400,
                   fontSize: 12,
@@ -453,7 +494,7 @@ class _RoomScreenState extends State<RoomScreen> {
                 ),
               ),
               Text(
-                '温度: $_temperature',
+                '${GameSettings.languageManager.get('temperature', category: 'room')}: ${GameSettings.languageManager.get(_temperature, category: 'room')}',
                 style: TextStyle(
                   color: _getTemperatureColor(),
                   fontSize: 12,
@@ -483,6 +524,43 @@ class _RoomScreenState extends State<RoomScreen> {
         ],
       ),
     );
+  }
+
+  // 获取火堆颜色
+  Color _getFireColor() {
+    String colorName =
+        GameSettings.fireConfigs['colors']![_fireLevel.toString()]!;
+    switch (colorName) {
+      case 'grey700':
+        return Colors.grey.shade700;
+      case 'orange300':
+        return Colors.orange.shade300;
+      case 'orange':
+        return Colors.orange;
+      case 'deepOrange':
+        return Colors.deepOrange;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  // 获取火堆描述
+  String _getFireDescription() {
+    switch (_fireLevel) {
+      case 0:
+        return GameSettings.languageManager.get('no_fire', category: 'room');
+      case 1:
+        return GameSettings.languageManager
+            .get('fire_smoldering', category: 'room');
+      case 2:
+        return GameSettings.languageManager
+            .get('fire_burning', category: 'room');
+      case 3:
+        return GameSettings.languageManager
+            .get('fire_roaring', category: 'room');
+      default:
+        return GameSettings.languageManager.get('no_fire', category: 'room');
+    }
   }
 
   // 构建建筑网格
@@ -531,29 +609,6 @@ class _RoomScreenState extends State<RoomScreen> {
       runSpacing: 10,
       children: buildingIcons,
     );
-  }
-
-  // 获取火堆颜色
-  Color _getFireColor() {
-    String colorName =
-        GameSettings.fireConfigs['colors']![_fireLevel.toString()]!;
-    switch (colorName) {
-      case 'grey700':
-        return Colors.grey.shade700;
-      case 'orange300':
-        return Colors.orange.shade300;
-      case 'orange':
-        return Colors.orange;
-      case 'deepOrange':
-        return Colors.deepOrange;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  // 获取火堆描述
-  String _getFireDescription() {
-    return GameSettings.fireConfigs['descriptions']![_fireLevel.toString()]!;
   }
 
   // 构建日志视图
@@ -639,19 +694,28 @@ class _RoomScreenState extends State<RoomScreen> {
       spacing: 10,
       runSpacing: 10,
       children: [
-        _buildActionButton('生火', _fireLevel == 0, () {
+        _buildActionButton(
+            GameSettings.languageManager.get('light_fire', category: 'actions'),
+            _fireLevel == 0, () {
           _lightFire();
           _updateState();
         }),
-        _buildActionButton('添加木头', _fireLevel > 0, () {
+        _buildActionButton(
+            GameSettings.languageManager.get('add_wood', category: 'actions'),
+            _fireLevel > 0, () {
           _addWood();
           _updateState();
         }),
-        _buildActionButton('收集木头', true, () {
+        _buildActionButton(
+            GameSettings.languageManager
+                .get('gather_wood', category: 'actions'),
+            true, () {
           _gatherWood();
           _updateState();
         }),
-        _buildActionButton('建造', _fireLevel > 0, () {
+        _buildActionButton(
+            GameSettings.languageManager.get('build', category: 'actions'),
+            _fireLevel > 0, () {
           setState(() {
             _showBuildingsMenu = true;
             _showVillagersMenu = false;
@@ -660,7 +724,9 @@ class _RoomScreenState extends State<RoomScreen> {
             _showCraftingMenu = false;
           });
         }),
-        _buildActionButton('村民', _fireLevel > 0, () {
+        _buildActionButton(
+            GameSettings.languageManager.get('villagers', category: 'actions'),
+            _fireLevel > 0, () {
           setState(() {
             _showVillagersMenu = true;
             _showBuildingsMenu = false;
@@ -670,7 +736,9 @@ class _RoomScreenState extends State<RoomScreen> {
           });
         }),
         if (storeOpened)
-          _buildActionButton('交易', true, () {
+          _buildActionButton(
+              GameSettings.languageManager.get('trade', category: 'actions'),
+              true, () {
             setState(() {
               _showTradeMenu = true;
               _showBuildingsMenu = false;
@@ -680,7 +748,9 @@ class _RoomScreenState extends State<RoomScreen> {
             });
           }),
         if (craftingUnlocked)
-          _buildActionButton('制作', true, () {
+          _buildActionButton(
+              GameSettings.languageManager.get('craft', category: 'actions'),
+              true, () {
             setState(() {
               _showCraftingMenu = true;
               _showBuildingsMenu = false;
@@ -690,13 +760,17 @@ class _RoomScreenState extends State<RoomScreen> {
             });
           }),
         if (outsideUnlocked)
-          _buildActionButton('外出', true, () {
+          _buildActionButton(
+              GameSettings.languageManager.get('explore', category: 'actions'),
+              true, () {
             setState(() {
               widget.gameState.currentLocation = 'outside';
               widget.gameState.notifyListeners();
             });
           }),
-        _buildActionButton('存档', true, () {
+        _buildActionButton(
+            GameSettings.languageManager.get('save', category: 'actions'), true,
+            () {
           setState(() {
             _showSaveMenu = true;
             _showBuildingsMenu = false;
@@ -1620,61 +1694,57 @@ class _RoomScreenState extends State<RoomScreen> {
 
   // 获取房间温度文本
   String _getRoomTempText() {
-    String temp = '';
-    switch (widget.gameState.room['temperature']) {
-      case 'cold':
-        temp = '寒冷的房间';
-        break;
-      case 'mild':
-        temp = '温和的房间';
-        break;
-      case 'warm':
-        temp = '温暖的房间';
-        break;
-      case 'hot':
-        temp = '炎热的房间';
-        break;
-      default:
-        temp = '房间';
-    }
-    return temp;
+    return GameSettings.languageManager.get('dark_room', category: 'room');
   }
 
   // 显示提示消息
   void _showMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+      ),
     );
   }
 
-  // 探索路径方法
+  // 探索路径的动作
   void _explorePathAction() {
     try {
       // 确保路径系统初始化
       if (widget.gameState.pathSystem == null) {
-        throw Exception('路径系统未初始化');
+        widget.gameState.pathSystem = PathSystem();
       }
 
-      // 添加基础物资
-      widget.gameState.addResource('cured meat', 10);
-      widget.gameState.addResource('bullets', 5);
-      widget.gameState.addResource('medicine', 3);
+      // 清空并添加基础物资到背包
+      widget.gameState.pathSystem.clearOutfit();
+      widget.gameState.pathSystem.increaseSupply('cured meat');
+      widget.gameState.pathSystem.increaseSupply('cured meat');
+      widget.gameState.pathSystem.increaseSupply('cured meat');
+      widget.gameState.pathSystem.increaseSupply('water');
+      widget.gameState.pathSystem.increaseSupply('water');
+      widget.gameState.pathSystem.increaseSupply('torch');
 
       // 切换到路径界面
       widget.gameState.currentLocation = 'path';
       widget.gameState.notifyListeners();
-      _showMessage('正在前往探索路径...');
 
       if (kDebugMode) {
-        print('已切换到路径系统');
+        print('已进入探索路径');
         print(
             '路径系统状态: ${widget.gameState.pathSystem != null ? "已初始化" : "未初始化"}');
       }
     } catch (e) {
-      _showMessage('无法进入探索: $e');
+      _showMessage(
+          GameSettings.languageManager.get('path_error', category: 'menu'));
       if (kDebugMode) {
         print('路径系统错误: $e');
       }
     }
+  }
+
+  // 修改语言
+  void _changeLanguage(String languageCode) {
+    GameSettings.languageManager.setLanguage(languageCode);
+    _showMessage(GameSettings.languageManager.get('language_changed'));
   }
 }

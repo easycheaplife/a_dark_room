@@ -1,3 +1,7 @@
+import 'package:flutter/foundation.dart';
+import 'language_manager.dart';
+
+/// 游戏设置 - 集中管理游戏配置和设置
 class GameSettings {
   // 资源存储上限
   static const Map<String, int> resourceLimits = {
@@ -194,21 +198,12 @@ class GameSettings {
     'mine': {
       'wood': 2,
       'leather': 1,
-      'interval': 30, // 维护间隔（秒）
+      'interval': 60, // 每60秒维护一次
     },
-    'steelworks': {
-      'coal': 1,
-      'wood': 2,
-      'interval': 30,
-    },
-    'school': {
+    'lodge': {
+      'meat': 1,
       'wood': 1,
-      'leather': 1,
-      'interval': 60,
-    },
-    'watermill': {
-      'wood': 2,
-      'interval': 45,
+      'interval': 120, // 每120秒维护一次
     },
   };
 
@@ -727,18 +722,25 @@ class GameSettings {
     'ruins',
   ];
 
-  static const Map<String, Map<String, dynamic>> fireConfigs = {
+  // 火堆配置
+  static const Map<String, Map<String, String>> fireConfigs = {
     'colors': {
-      '0': 'grey700',
-      '1': 'orange300',
-      '2': 'orange',
-      '3': 'deepOrange',
+      '0': 'grey700', // 无火
+      '1': 'orange300', // 余烬
+      '2': 'orange', // 燃烧
+      '3': 'deepOrange', // 熊熊燃烧
     },
     'descriptions': {
-      '0': '这里很黑，很冷。\n需要生火。',
-      '1': '火堆噼啪作响。',
-      '2': '火堆燃烧得很好。',
-      '3': '火堆熊熊燃烧。',
+      '0': 'no_fire', // '无火'
+      '1': 'fire_smoldering', // '余烬'
+      '2': 'fire_burning', // '燃烧'
+      '3': 'fire_roaring', // '熊熊燃烧'
+    },
+    'effects': {
+      '0': 'cold', // 寒冷
+      '1': 'mild', // 微温
+      '2': 'warm', // 温暖
+      '3': 'hot', // 炎热
     },
   };
 
@@ -814,13 +816,28 @@ class GameSettings {
   };
 
   // 开发者相关设置
-  static const bool DEV_MODE = true; // 开发者模式总开关
+  static const bool DEV_MODE = true;
 
   // 开发者选项
   static const Map<String, bool> DEV_OPTIONS = {
-    'QUICK_TEST_PATH': true, // 快速测试路径系统
+    'QUICK_TEST_PATH': false, // 快速测试路径系统
     'UNLIMITED_RESOURCES': true, // 无限资源
     'SKIP_TUTORIALS': true, // 跳过教程
-    'UNLOCK_ALL': true, // 解锁所有功能
+    'UNLOCK_ALL': false, // 解锁所有内容
   };
+
+  // 语言管理器
+  static final LanguageManager languageManager = LanguageManager();
+
+  // 初始化设置
+  static Future<void> init() async {
+    // 初始化语言设置
+    await languageManager.init();
+
+    if (kDebugMode) {
+      print('游戏设置初始化完成');
+      print('开发者模式: $DEV_MODE');
+      print('当前语言: ${languageManager.currentLanguage}');
+    }
+  }
 }

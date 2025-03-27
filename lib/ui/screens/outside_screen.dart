@@ -397,7 +397,8 @@ class _OutsideScreenState extends State<OutsideScreen> {
   // 构建资源项
   Widget _buildResourceItem(String resource, IconData icon) {
     return Tooltip(
-      message: resource,
+      message:
+          GameSettings.languageManager.get(resource, category: 'resources'),
       child: Row(
         children: [
           Icon(icon, color: Colors.white, size: 16),
@@ -473,9 +474,10 @@ class _OutsideScreenState extends State<OutsideScreen> {
                   final percentage = (amount / limit * 100).round();
 
                   return Tooltip(
-                    message: '$resource: $amount/$limit',
+                    message:
+                        '${GameSettings.languageManager.get(resource, category: 'resources')}: $amount/$limit',
                     child: Text(
-                      '$resource: $amount',
+                      '${GameSettings.languageManager.get(resource, category: 'resources')}: $amount',
                       style: TextStyle(
                         color: percentage >= 90 ? Colors.orange : Colors.white,
                       ),

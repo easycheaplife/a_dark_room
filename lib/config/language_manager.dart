@@ -1,0 +1,283 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+/// 语言管理器 - 用于处理游戏中的多语言支持
+class LanguageManager extends ChangeNotifier {
+  static const String LANG_PREF_KEY = 'selected_language';
+  static const String DEFAULT_LANGUAGE = 'zh'; // 默认使用中文
+
+  // 支持的语言
+  static const Map<String, String> SUPPORTED_LANGUAGES = {
+    'zh': '中文',
+    'en': 'English',
+  };
+
+  // 当前选择的语言
+  String _currentLanguage = DEFAULT_LANGUAGE;
+
+  // 获取当前语言
+  String get currentLanguage => _currentLanguage;
+
+  // 单例模式
+  static final LanguageManager _instance = LanguageManager._internal();
+
+  // 工厂构造函数
+  factory LanguageManager() {
+    return _instance;
+  }
+
+  // 内部构造函数
+  LanguageManager._internal();
+
+  // 翻译文本集合
+  static const Map<String, Map<String, Map<String, String>>> _translations = {
+    'en': {
+      'common': {
+        'save_success': 'Game saved successfully',
+        'save_failed': 'Failed to save game',
+        'back': 'Back',
+        'confirm': 'Confirm',
+        'cancel': 'Cancel',
+        'language_changed': 'Language changed to English',
+      },
+      'room': {
+        'dark_room': 'Dark Room',
+        'fire_status': 'Fire Status',
+        'temperature': 'Temperature',
+        'no_fire': 'It\'s dark and cold.\nNeed to light a fire.',
+        'fire_smoldering': 'The fire crackles.',
+        'fire_burning': 'The fire burns well.',
+        'fire_roaring': 'The fire roars.',
+        'cold': 'Cold',
+        'mild': 'Mild',
+        'warm': 'Warm',
+        'hot': 'Hot',
+        'worker_status': 'Worker Status',
+        'efficiency': 'Efficiency',
+      },
+      'actions': {
+        'light_fire': 'Light Fire',
+        'add_wood': 'Add Wood',
+        'gather_wood': 'Gather Wood',
+        'build': 'Build',
+        'villagers': 'Villagers',
+        'trade': 'Trade',
+        'craft': 'Craft',
+        'explore': 'Explore',
+        'save': 'Save',
+      },
+      'menu': {
+        'game_menu': 'Game Menu',
+        'go_outside': 'Go Outside',
+        'explore_path': 'Explore Paths',
+        'test_path': 'Test Path System',
+        'enter_world': 'Enter World Map',
+        'add_resources': 'Add Resources',
+        'unlock_all': 'Unlock All Features',
+        'resources_added': 'Resources added',
+        'all_unlocked': 'All features unlocked',
+        'language': 'Language',
+        'path_error': 'Error entering path system',
+      },
+      'resources': {
+        'wood': 'Wood',
+        'fur': 'Fur',
+        'meat': 'Meat',
+        'scales': 'Scales',
+        'teeth': 'Teeth',
+        'leather': 'Leather',
+        'cloth': 'Cloth',
+        'cured meat': 'Cured Meat',
+        'iron': 'Iron',
+        'coal': 'Coal',
+        'steel': 'Steel',
+        'medicine': 'Medicine',
+        'bullets': 'Bullets',
+        'energy cell': 'Energy Cell',
+        'money': 'Money',
+      },
+      'villagers': {
+        'wood_gatherer': 'Wood Gatherer',
+        'hunter': 'Hunter',
+        'trapper': 'Trapper',
+        'tanner': 'Tanner',
+        'miner': 'Miner',
+        'coal_miner': 'Coal Miner',
+        'iron_miner': 'Iron Miner',
+        'builder': 'Builder',
+        'scout': 'Scout',
+      },
+      'world': {
+        'world_map': 'World Map',
+        'move': 'Move',
+        'current_location': 'Current Location',
+        'food_available': 'Food Available',
+        'no_food': 'No Food',
+      },
+    },
+    'zh': {
+      'common': {
+        'save_success': '游戏保存成功',
+        'save_failed': '保存游戏失败',
+        'back': '返回',
+        'confirm': '确认',
+        'cancel': '取消',
+        'language_changed': '语言已切换为中文',
+      },
+      'room': {
+        'dark_room': '黑暗的房间',
+        'fire_status': '火堆状态',
+        'temperature': '温度',
+        'no_fire': '这里很黑，很冷。\n需要生火。',
+        'fire_smoldering': '火堆噼啪作响。',
+        'fire_burning': '火堆燃烧得很好。',
+        'fire_roaring': '火堆熊熊燃烧。',
+        'cold': '寒冷',
+        'mild': '微温',
+        'warm': '温暖',
+        'hot': '炎热',
+        'worker_status': '工作状态',
+        'efficiency': '效率',
+      },
+      'actions': {
+        'light_fire': '生火',
+        'add_wood': '添加木头',
+        'gather_wood': '收集木头',
+        'build': '建造',
+        'villagers': '村民',
+        'trade': '交易',
+        'craft': '制作',
+        'explore': '探索',
+        'save': '保存',
+      },
+      'menu': {
+        'game_menu': '游戏菜单',
+        'go_outside': '出门',
+        'explore_path': '探索小径',
+        'test_path': '测试路径系统',
+        'enter_world': '进入世界地图',
+        'add_resources': '添加资源',
+        'unlock_all': '解锁所有功能',
+        'resources_added': '资源已添加',
+        'all_unlocked': '所有功能已解锁',
+        'language': '语言',
+        'path_error': '进入路径系统时出错',
+      },
+      'resources': {
+        'wood': '木头',
+        'fur': '毛皮',
+        'meat': '肉',
+        'scales': '鳞片',
+        'teeth': '牙齿',
+        'leather': '皮革',
+        'cloth': '布料',
+        'cured meat': '腌肉',
+        'iron': '铁',
+        'coal': '煤',
+        'steel': '钢',
+        'medicine': '药品',
+        'bullets': '子弹',
+        'energy cell': '能量电池',
+        'money': '钱',
+      },
+      'villagers': {
+        'wood_gatherer': '伐木工',
+        'hunter': '猎人',
+        'trapper': '陷阱师',
+        'tanner': '制革工',
+        'miner': '矿工',
+        'coal_miner': '煤矿工',
+        'iron_miner': '铁矿工',
+        'builder': '建筑工',
+        'scout': '侦察兵',
+      },
+      'world': {
+        'world_map': '世界地图',
+        'move': '移动',
+        'current_location': '当前位置',
+        'food_available': '食物充足',
+        'no_food': '没有食物',
+      },
+    },
+  };
+
+  // 初始化
+  Future<void> init() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _currentLanguage = prefs.getString(LANG_PREF_KEY) ?? DEFAULT_LANGUAGE;
+
+      if (kDebugMode) {
+        print('当前语言: $_currentLanguage');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('初始化语言设置失败: $e');
+      }
+      _currentLanguage = DEFAULT_LANGUAGE;
+    }
+  }
+
+  // 切换语言
+  Future<void> setLanguage(String languageCode) async {
+    if (!SUPPORTED_LANGUAGES.containsKey(languageCode)) {
+      if (kDebugMode) {
+        print('不支持的语言: $languageCode');
+      }
+      return;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(LANG_PREF_KEY, languageCode);
+
+      _currentLanguage = languageCode;
+      notifyListeners();
+
+      if (kDebugMode) {
+        print('语言已切换为: $_currentLanguage');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('保存语言设置失败: $e');
+      }
+    }
+  }
+
+  // 获取当前语言的文本
+  String get(String key, {String category = 'common'}) {
+    try {
+      return _translations[currentLanguage]![category]![key] ?? key;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Language key not found: $category/$key');
+      }
+      return key;
+    }
+  }
+
+  // 检查是否有翻译
+  bool hasTranslation(String key, {String? category}) {
+    final cat = category ?? 'common';
+    final fullKey = '${key}_$_currentLanguage';
+
+    return _translations.containsKey(cat) &&
+        _translations[cat]!.containsKey(fullKey);
+  }
+
+  // 添加语言翻译(开发中使用)
+  void addTranslation(
+      String category, String key, String value, String language) {
+    if (!_translations.containsKey(category)) {
+      _translations[category] = {};
+    }
+
+    _translations[category]!['${key}_$language'] = value;
+  }
+
+  // 导出所有翻译为JSON(开发中使用)
+  String exportTranslations() {
+    return jsonEncode(_translations);
+  }
+}
