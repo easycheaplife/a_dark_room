@@ -31,7 +31,7 @@ class LanguageManager extends ChangeNotifier {
   LanguageManager._internal();
 
   // 翻译文本集合
-  static const Map<String, Map<String, Map<String, String>>> _translations = {
+  static Map<String, Map<String, Map<String, String>>> _translations = {
     'en': {
       'common': {
         'save_success': 'Game saved successfully',
@@ -40,6 +40,13 @@ class LanguageManager extends ChangeNotifier {
         'confirm': 'Confirm',
         'cancel': 'Cancel',
         'language_changed': 'Language changed to English',
+        'own': 'Owned',
+        'buy': 'Buy',
+        'sell': 'Sell',
+        'level': 'Lv',
+        'price_update': 'Prices update every 5 minutes',
+        'to_level': 'to level',
+        'requires': 'Requires',
       },
       'room': {
         'dark_room': 'Dark Room',
@@ -80,6 +87,12 @@ class LanguageManager extends ChangeNotifier {
         'language': 'Language',
         'path_error': 'Error entering path system',
       },
+      'resource_groups': {
+        'basic_resources': 'Basic Resources',
+        'hunting_resources': 'Hunting Resources',
+        'crafting_materials': 'Crafting Materials',
+        'food': 'Food',
+      },
       'resources': {
         'wood': 'Wood',
         'fur': 'Fur',
@@ -96,6 +109,7 @@ class LanguageManager extends ChangeNotifier {
         'bullets': 'Bullets',
         'energy cell': 'Energy Cell',
         'money': 'Money',
+        'water': 'Water',
       },
       'villagers': {
         'wood_gatherer': 'Wood Gatherer',
@@ -107,6 +121,10 @@ class LanguageManager extends ChangeNotifier {
         'iron_miner': 'Iron Miner',
         'builder': 'Builder',
         'scout': 'Scout',
+        'total_population': 'Total Population',
+        'happiness': 'Happiness',
+        'gatherer': 'Gatherer',
+        'craftsman': 'Craftsman',
       },
       'world': {
         'world_map': 'World Map',
@@ -114,6 +132,11 @@ class LanguageManager extends ChangeNotifier {
         'current_location': 'Current Location',
         'food_available': 'Food Available',
         'no_food': 'No Food',
+      },
+      'buildings': {
+        'upgrade_to': 'Upgrade to',
+        'upgrade_success': 'Upgraded',
+        'maintenance': 'Maintenance',
       },
     },
     'zh': {
@@ -124,6 +147,13 @@ class LanguageManager extends ChangeNotifier {
         'confirm': '确认',
         'cancel': '取消',
         'language_changed': '语言已切换为中文',
+        'own': '持有',
+        'buy': '买入',
+        'sell': '卖出',
+        'level': '级',
+        'price_update': '价格每5分钟更新一次',
+        'to_level': '到',
+        'requires': '需要',
       },
       'room': {
         'dark_room': '黑暗的房间',
@@ -164,6 +194,12 @@ class LanguageManager extends ChangeNotifier {
         'language': '语言',
         'path_error': '进入路径系统时出错',
       },
+      'resource_groups': {
+        'basic_resources': '基础资源',
+        'hunting_resources': '狩猎资源',
+        'crafting_materials': '制作材料',
+        'food': '食物',
+      },
       'resources': {
         'wood': '木头',
         'fur': '毛皮',
@@ -180,6 +216,7 @@ class LanguageManager extends ChangeNotifier {
         'bullets': '子弹',
         'energy cell': '能量电池',
         'money': '钱',
+        'water': '水',
       },
       'villagers': {
         'wood_gatherer': '伐木工',
@@ -191,6 +228,10 @@ class LanguageManager extends ChangeNotifier {
         'iron_miner': '铁矿工',
         'builder': '建筑工',
         'scout': '侦察兵',
+        'total_population': '总人口',
+        'happiness': '幸福度',
+        'gatherer': '采集者',
+        'craftsman': '工匠',
       },
       'world': {
         'world_map': '世界地图',
@@ -198,6 +239,11 @@ class LanguageManager extends ChangeNotifier {
         'current_location': '当前位置',
         'food_available': '食物充足',
         'no_food': '没有食物',
+      },
+      'buildings': {
+        'upgrade_to': '升级到',
+        'upgrade_success': '升级了',
+        'maintenance': '维护',
       },
     },
   };
@@ -269,11 +315,13 @@ class LanguageManager extends ChangeNotifier {
   // 添加语言翻译(开发中使用)
   void addTranslation(
       String category, String key, String value, String language) {
-    if (!_translations.containsKey(category)) {
-      _translations[category] = {};
+    if (!_translations.containsKey(language)) {
+      _translations[language] = {};
     }
-
-    _translations[category]!['${key}_$language'] = value;
+    if (!_translations[language]!.containsKey(category)) {
+      _translations[language]![category] = {};
+    }
+    _translations[language]![category]![key] = value;
   }
 
   // 导出所有翻译为JSON(开发中使用)

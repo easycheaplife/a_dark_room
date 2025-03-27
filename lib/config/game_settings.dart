@@ -650,10 +650,17 @@ class GameSettings {
 
   // UI配置
   static const Map<String, List<String>> resourceGroups = {
-    '基础资源': ['wood', 'meat', 'water'],
-    '狩猎资源': ['fur', 'scales', 'teeth', 'leather'],
-    '制作材料': ['cloth', 'herbs', 'coal', 'iron', 'steel', 'sulphur'],
-    '食物': ['cured meat'],
+    'basic_resources': ['wood', 'meat', 'water'],
+    'hunting_resources': ['fur', 'scales', 'teeth', 'leather'],
+    'crafting_materials': [
+      'cloth',
+      'herbs',
+      'coal',
+      'iron',
+      'steel',
+      'sulphur'
+    ],
+    'food': ['cured meat'],
   };
 
   static const Map<String, Map<String, dynamic>> locationConfigs = {

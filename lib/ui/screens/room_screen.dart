@@ -167,7 +167,7 @@ class _RoomScreenState extends State<RoomScreen> {
   // 修改资源显示方法
   Widget _buildResourceDisplay() {
     // 检查是否有任何基础资源
-    bool hasBasicResources = GameSettings.resourceGroups['基础资源']!
+    bool hasBasicResources = GameSettings.resourceGroups['basic_resources']!
         .any((resource) => (_resources[resource] ?? 0) > 0);
 
     if (!hasBasicResources) {
@@ -194,7 +194,8 @@ class _RoomScreenState extends State<RoomScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                group.key,
+                GameSettings.languageManager
+                    .get(group.key, category: 'resource_groups'),
                 style: TextStyle(
                   color: Colors.grey.shade400,
                   fontSize: 12,
@@ -590,7 +591,10 @@ class _RoomScreenState extends State<RoomScreen> {
               ),
               child: Center(
                 child: Text(
-                  name.substring(0, 1).toUpperCase(),
+                  GameSettings.languageManager.currentLanguage == 'zh' &&
+                          name.length > 0
+                      ? name.substring(0, 1)
+                      : name.substring(0, 1).toUpperCase(),
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -801,10 +805,12 @@ class _RoomScreenState extends State<RoomScreen> {
       List<String> maintenanceCosts = [];
       maintenance.forEach((resource, amount) {
         if (resource != 'interval') {
-          maintenanceCosts.add('$resource: $amount');
+          maintenanceCosts.add(
+              '${GameSettings.languageManager.get(resource, category: 'resources')}: $amount');
         }
       });
-      maintenanceText = '维护: ${maintenanceCosts.join(', ')}';
+      maintenanceText =
+          '${GameSettings.languageManager.get('maintenance', category: 'buildings')}: ${maintenanceCosts.join(', ')}';
     }
 
     return Container(
@@ -832,7 +838,7 @@ class _RoomScreenState extends State<RoomScreen> {
                 ),
                 if (count > 0)
                   Text(
-                    'Lv.$currentLevel',
+                    '${GameSettings.languageManager.get('level', category: 'common')}.$currentLevel',
                     style: TextStyle(
                       color: Colors.amber,
                       fontSize: 12,
@@ -852,7 +858,7 @@ class _RoomScreenState extends State<RoomScreen> {
                   ),
                 ),
                 Text(
-                  '需要: ${_formatCost(cost)}',
+                  '${GameSettings.languageManager.get('requires', category: 'common')}: ${_formatCost(cost)}',
                   style: TextStyle(
                     color:
                         canBuild ? Colors.grey.shade400 : Colors.grey.shade700,
@@ -882,7 +888,8 @@ class _RoomScreenState extends State<RoomScreen> {
                 onPressed: canUpgrade
                     ? () {
                         if (widget.gameState.upgradeBuilding(id)) {
-                          _addLog('升级了$name到${currentLevel + 1}级。');
+                          _addLog(
+                              '${GameSettings.languageManager.get('upgrade_success', category: 'buildings')} $name ${GameSettings.languageManager.get('to_level', category: 'common')} ${currentLevel + 1}');
                           _updateState();
                         }
                       }
@@ -892,7 +899,7 @@ class _RoomScreenState extends State<RoomScreen> {
                   minimumSize: const Size(double.infinity, 30),
                 ),
                 child: Text(
-                  '升级到 ${currentLevel + 1} 级',
+                  '${GameSettings.languageManager.get('upgrade_to', category: 'buildings')} ${currentLevel + 1} ${GameSettings.languageManager.get('level', category: 'common')}',
                   style: TextStyle(fontSize: 12),
                 ),
               ),
@@ -951,21 +958,15 @@ class _RoomScreenState extends State<RoomScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '总人口: ${_population['total'] ?? 0}/${_population['max'] ?? 0}',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  Text(
-                    '幸福度: ${_population['happiness']?.toStringAsFixed(0) ?? 100}%',
-                    style: TextStyle(
-                      color:
-                          _getHappinessColor(_population['happiness'] ?? 100),
-                    ),
-                  ),
-                ],
+              Text(
+                '${GameSettings.languageManager.get('total_population', category: 'villagers')}: ${_population['total'] ?? 0}/${_population['max'] ?? 0}',
+                style: const TextStyle(color: Colors.white),
+              ),
+              Text(
+                '${GameSettings.languageManager.get('happiness', category: 'villagers')}: ${_population['happiness']?.toStringAsFixed(0) ?? 100}%',
+                style: TextStyle(
+                  color: _getHappinessColor(_population['happiness'] ?? 100),
+                ),
               ),
             ],
           ),
@@ -992,7 +993,7 @@ class _RoomScreenState extends State<RoomScreen> {
             ),
             child: ListTile(
               title: Text(
-                '$type ($count)',
+                '${GameSettings.languageManager.get(type, category: 'villagers')} ($count)',
                 style: TextStyle(
                   color: canRecruit ? Colors.white : Colors.grey,
                   fontWeight: FontWeight.bold,
@@ -1011,7 +1012,7 @@ class _RoomScreenState extends State<RoomScreen> {
                     ),
                   ),
                   Text(
-                    '需要: ${_formatCost(info['cost'] as Map<String, dynamic>)}',
+                    '${GameSettings.languageManager.get('requires', category: 'common')}: ${_formatCost(info['cost'] as Map<String, dynamic>)}',
                     style: TextStyle(
                       color: canRecruit
                           ? Colors.grey.shade400
@@ -1024,7 +1025,8 @@ class _RoomScreenState extends State<RoomScreen> {
               onTap: canRecruit
                   ? () {
                       if (widget.gameState.recruitVillager(type)) {
-                        _addLog('招募了一个$type。');
+                        _addLog(
+                            '招募了一个${GameSettings.languageManager.get(type, category: 'villagers')}。');
                       }
                     }
                   : null,
@@ -1153,14 +1155,15 @@ class _RoomScreenState extends State<RoomScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '金钱: ${_resources['money'] ?? 0}',
+                    '${GameSettings.languageManager.get('money', category: 'resources')}: ${_resources['money'] ?? 0}',
                     style: const TextStyle(
                       color: Colors.amber,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
-                    '价格每5分钟更新一次',
+                    GameSettings.languageManager
+                        .get('price_update', category: 'common'),
                     style: TextStyle(
                       color: Colors.grey.shade400,
                       fontSize: 12,
@@ -1199,7 +1202,7 @@ class _RoomScreenState extends State<RoomScreen> {
                         ),
                       ),
                       Text(
-                        '持有: $currentAmount',
+                        '${GameSettings.languageManager.get('own', category: 'common')}: $currentAmount',
                         style: TextStyle(
                           color: Colors.grey.shade300,
                           fontSize: 12,
@@ -1211,14 +1214,14 @@ class _RoomScreenState extends State<RoomScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '买入: $buyPrice',
+                        '${GameSettings.languageManager.get('buy', category: 'common')}: $buyPrice',
                         style: TextStyle(
                           color: Colors.green.shade300,
                           fontSize: 12,
                         ),
                       ),
                       Text(
-                        '卖出: $sellPrice',
+                        '${GameSettings.languageManager.get('sell', category: 'common')}: $sellPrice',
                         style: TextStyle(
                           color: Colors.red.shade300,
                           fontSize: 12,

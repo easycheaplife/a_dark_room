@@ -425,6 +425,57 @@ class _OutsideScreenState extends State<OutsideScreen> {
             _buildLocationSelector(),
             const SizedBox(height: 16),
             _buildResourceDisplay(),
+            const SizedBox(height: 16),
+            // 添加工人状态显示
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade900,
+                    border: Border.all(color: Colors.grey.shade800),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        GameSettings.languageManager
+                            .get('worker_status', category: 'room'),
+                        style: TextStyle(
+                          color: Colors.grey.shade400,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          '${GameSettings.languageManager.get('gatherer', category: 'villagers')}: 5',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          '${GameSettings.languageManager.get('hunter', category: 'villagers')}: 3',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          '${GameSettings.languageManager.get('builder', category: 'villagers')}: 2',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ],
           const SizedBox(height: 16),
           _buildGameLog(),
