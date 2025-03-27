@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../../models/game_state.dart';
 import '../../models/path_system.dart';
+import '../../config/game_settings.dart';
 import 'outfit_screen.dart';
 
 /// 路径屏幕 - 显示探索准备界面
@@ -75,7 +76,8 @@ class _PathScreenState extends State<PathScreen> {
         ? Scaffold(
             backgroundColor: Colors.brown.shade100,
             appBar: AppBar(
-              title: const Text('探索准备'),
+              title: Text(GameSettings.languageManager
+                  .get('prepare_exploration', category: 'path')),
               backgroundColor: Colors.brown.shade800,
             ),
             body: Center(
@@ -91,7 +93,8 @@ class _PathScreenState extends State<PathScreen> {
                     onPressed: () {
                       _initPathScreen();
                     },
-                    child: const Text('重试'),
+                    child: Text(GameSettings.languageManager
+                        .get('retry', category: 'path')),
                   ),
                   const SizedBox(height: 10),
                   ElevatedButton(
@@ -99,7 +102,8 @@ class _PathScreenState extends State<PathScreen> {
                       widget.gameState.currentLocation = 'room';
                       widget.gameState.notifyListeners();
                     },
-                    child: const Text('返回房间'),
+                    child: Text(GameSettings.languageManager
+                        .get('return_to_room', category: 'path')),
                   ),
                 ],
               ),
@@ -122,7 +126,8 @@ class _PathScreenState extends State<PathScreen> {
     }
 
     if (!_pathSystem.canEmbark()) {
-      _showMessage('无法出发: 需要至少携带一些熏肉');
+      _showMessage(
+          GameSettings.languageManager.get('embark_error', category: 'path'));
       return;
     }
 
@@ -130,18 +135,21 @@ class _PathScreenState extends State<PathScreen> {
       // 调用GameState的embarkonPath，它会处理所有出发逻辑
       bool success = widget.gameState.embarkonPath();
       if (success) {
-        _showMessage('正在前往世界...');
+        _showMessage(GameSettings.languageManager
+            .get('going_to_world', category: 'path'));
         if (kDebugMode) {
           print('出发成功，正在前往世界');
         }
       } else {
-        _showMessage('无法出发，请检查背包');
+        _showMessage(GameSettings.languageManager
+            .get('cannot_embark', category: 'path'));
         if (kDebugMode) {
           print('出发失败');
         }
       }
     } catch (e) {
-      _showMessage('出错: $e');
+      _showMessage(GameSettings.languageManager.get('error', category: 'path') +
+          e.toString());
       if (kDebugMode) {
         print('出发到世界出错: $e');
       }

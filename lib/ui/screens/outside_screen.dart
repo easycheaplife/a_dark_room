@@ -508,7 +508,8 @@ class _OutsideScreenState extends State<OutsideScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                group.key,
+                GameSettings.languageManager
+                    .get(group.key, category: 'resource_groups'),
                 style: TextStyle(
                   color: Colors.grey.shade400,
                   fontSize: 12,
@@ -619,7 +620,10 @@ class _OutsideScreenState extends State<OutsideScreen> {
                   disabledBackgroundColor: Colors.grey.shade900,
                 ),
                 child: Text(
-                  _isExploring ? '探索中... $_explorationTimeLeft秒' : '探索',
+                  _isExploring
+                      ? '${GameSettings.languageManager.get('exploring', category: 'actions')}... $_explorationTimeLeft${GameSettings.languageManager.get('seconds', category: 'common')}'
+                      : GameSettings.languageManager
+                          .get('explore', category: 'actions'),
                   style: const TextStyle(color: Colors.white),
                 ),
               ),
@@ -631,7 +635,10 @@ class _OutsideScreenState extends State<OutsideScreen> {
                   disabledBackgroundColor: Colors.grey.shade900,
                 ),
                 child: Text(
-                  _isScavenging ? '搜索中... $_scavengingTimeLeft秒' : '搜索',
+                  _isScavenging
+                      ? '${GameSettings.languageManager.get('scavenging', category: 'actions')}... $_scavengingTimeLeft${GameSettings.languageManager.get('seconds', category: 'common')}'
+                      : GameSettings.languageManager
+                          .get('scavenge', category: 'actions'),
                   style: const TextStyle(color: Colors.white),
                 ),
               ),
@@ -642,14 +649,16 @@ class _OutsideScreenState extends State<OutsideScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.grey.shade800,
                   ),
-                  child: const Text('小型狩猎'),
+                  child: Text(GameSettings.languageManager
+                      .get('small_hunt', category: 'actions')),
                 ),
                 ElevatedButton(
                   onPressed: () => _startHunting('large'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.grey.shade800,
                   ),
-                  child: const Text('大型狩猎'),
+                  child: Text(GameSettings.languageManager
+                      .get('large_hunt', category: 'actions')),
                 ),
               ],
               // 收集水按钮
@@ -662,7 +671,11 @@ class _OutsideScreenState extends State<OutsideScreen> {
                   disabledBackgroundColor: Colors.grey.shade900,
                 ),
                 child: Text(
-                  widget.gameState.isGatheringWater ? '正在收集水...' : '收集水',
+                  widget.gameState.isGatheringWater
+                      ? GameSettings.languageManager
+                          .get('gathering_water', category: 'actions')
+                      : GameSettings.languageManager
+                          .get('gather_water', category: 'actions'),
                   style: const TextStyle(color: Colors.white),
                 ),
               ),
@@ -675,7 +688,8 @@ class _OutsideScreenState extends State<OutsideScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.grey.shade800,
                 ),
-                child: const Text('返回房间'),
+                child: Text(GameSettings.languageManager
+                    .get('return_room', category: 'actions')),
               ),
             ],
           ),
@@ -848,63 +862,89 @@ class _OutsideScreenState extends State<OutsideScreen> {
     );
   }
 
-  // 添加导航按钮区域
-  Widget _buildNavigationButtons() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // 返回村庄按钮
-          ElevatedButton.icon(
-            icon: const Icon(Icons.home),
-            label: const Text('返回村庄'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.brown.shade800,
-              foregroundColor: Colors.white,
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // 资源栏
+            _buildResourceBar(),
+            // 内容区域
+            Expanded(
+              child: _buildContentArea(),
             ),
-            onPressed: () {
-              widget.gameState.currentLocation = 'room';
-              widget.gameState.notifyListeners();
-            },
+          ],
+        ),
+      ),
+      // 底部导航栏，显示不同场景的按钮
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.black,
+          border: Border(
+            top: BorderSide(color: Colors.grey.shade800, width: 1),
           ),
-
-          // 前往探索按钮
-          ElevatedButton.icon(
-            icon: const Icon(Icons.explore),
-            label: const Text('探索荒野'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green.shade800,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () {
-              widget.gameState.currentLocation = 'path';
-              widget.gameState.notifyListeners();
-            },
+        ),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _buildNavButton(
+                  GameSettings.languageManager
+                      .get('room_btn', category: 'navigation'), () {
+                // 前往小屋
+                widget.gameState.currentLocation = 'room';
+                widget.gameState.notifyListeners();
+              }),
+              _buildNavButton(
+                  GameSettings.languageManager
+                      .get('hunt_btn', category: 'navigation'), () {
+                // 狩猎
+                _startHunting('small');
+              }),
+              // 交易站
+              if (widget.gameState.storeOpened)
+                _buildNavButton(
+                    GameSettings.languageManager
+                        .get('store_btn', category: 'navigation'), () {
+                  widget.gameState.currentLocation = 'store';
+                  widget.gameState.notifyListeners();
+                }),
+              // 制作
+              if (widget.gameState.craftingUnlocked)
+                _buildNavButton(
+                    GameSettings.languageManager
+                        .get('craft_btn', category: 'navigation'), () {
+                  widget.gameState.currentLocation = 'crafting';
+                  widget.gameState.notifyListeners();
+                }),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.brown.shade100,
-      appBar: AppBar(
-        title: const Text('村外'),
-        backgroundColor: Colors.brown.shade800,
-      ),
-      body: Column(
-        children: [
-          // 资源和状态显示
-          _buildResourceBar(),
-
-          // 主要内容区域
-          Expanded(
-            child: _buildContentArea(),
+  // 构建导航按钮
+  Widget _buildNavButton(String label, VoidCallback onPressed) {
+    return Container(
+      width: 50,
+      height: 50,
+      margin: const EdgeInsets.all(5),
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.grey.shade800,
+          padding: EdgeInsets.zero,
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
           ),
-        ],
+        ),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/game_state.dart';
 import '../../models/path_system.dart';
 import '../../models/world_system.dart';
+import '../../config/game_settings.dart';
 
 class OutfitScreen extends StatefulWidget {
   final GameState gameState;
@@ -43,7 +44,8 @@ class _OutfitScreenState extends State<OutfitScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('准备出发'),
+        title: Text(GameSettings.languageManager
+            .get('prepare_to_depart', category: 'outfit')),
         backgroundColor: Colors.brown.shade800,
         automaticallyImplyLeading: false, // 禁用默认的返回按钮
       ),
@@ -82,7 +84,7 @@ class _OutfitScreenState extends State<OutfitScreen> {
               const Icon(Icons.backpack, color: Colors.brown),
               const SizedBox(width: 8),
               Text(
-                '背包空间: ${widget.pathSystem.getFreeSpace().toStringAsFixed(1)}/${widget.pathSystem.getCapacity()}',
+                '${GameSettings.languageManager.get('bag_space', category: 'outfit')}: ${widget.pathSystem.getFreeSpace().toStringAsFixed(1)}/${widget.pathSystem.getCapacity()}',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ],
@@ -116,9 +118,11 @@ class _OutfitScreenState extends State<OutfitScreen> {
             title: Text(_formatItemName(item)),
             subtitle: Row(
               children: [
-                Text('重量: ${widget.pathSystem.getItemWeight(item)}'),
+                Text(
+                    '${GameSettings.languageManager.get('weight', category: 'outfit')}: ${widget.pathSystem.getItemWeight(item)}'),
                 const SizedBox(width: 16),
-                Text('可用: ${available}'),
+                Text(
+                    '${GameSettings.languageManager.get('available', category: 'outfit')}: ${available}'),
               ],
             ),
             trailing: Row(
@@ -183,7 +187,8 @@ class _OutfitScreenState extends State<OutfitScreen> {
           // 返回按钮
           ElevatedButton.icon(
             icon: const Icon(Icons.arrow_back),
-            label: const Text('返回'),
+            label: Text(
+                GameSettings.languageManager.get('return', category: 'outfit')),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.grey,
               foregroundColor: Colors.white,
@@ -198,7 +203,8 @@ class _OutfitScreenState extends State<OutfitScreen> {
           // 出发按钮
           ElevatedButton.icon(
             icon: const Icon(Icons.directions_walk),
-            label: const Text('出发'),
+            label: Text(
+                GameSettings.languageManager.get('depart', category: 'outfit')),
             style: ElevatedButton.styleFrom(
               backgroundColor: canEmbark ? Colors.green : Colors.grey,
               foregroundColor: Colors.white,

@@ -42,6 +42,10 @@ class _RoomScreenState extends State<RoomScreen> {
           GameSettings.initialResources['money']!;
     }
 
+    // 添加初始日志
+    _logs.clear();
+    _logs.add(GameSettings.languageManager.get('dark_room', category: 'room'));
+
     // 添加事件检查
     widget.gameState.initEventSystem();
     _updateState();
@@ -82,16 +86,18 @@ class _RoomScreenState extends State<RoomScreen> {
       widget.gameState.room['fire'] = 1;
       widget.gameState.room['temperature'] = 'warm';
       widget.gameState.notifyListeners();
-      _addLog('火堆点燃了。房间变暖了。');
+      _addLog(GameSettings.languageManager.get('fire_lit', category: 'room'));
     } else {
-      _addLog('没有足够的木头。');
+      _addLog(GameSettings.languageManager
+          .get('not_enough_wood', category: 'room'));
     }
   }
 
   // 添加木头
   void _addWood() {
     if (_fireLevel == 0) {
-      _addLog('没有火堆。');
+      _addLog(
+          GameSettings.languageManager.get('no_fire_pit', category: 'room'));
       return;
     }
 
@@ -103,14 +109,16 @@ class _RoomScreenState extends State<RoomScreen> {
       }
 
       if (currentFire == 1) {
-        _addLog('火堆燃烧更旺了。');
+        _addLog(GameSettings.languageManager
+            .get('fire_burns_brighter', category: 'room'));
       } else if (currentFire == 2) {
-        _addLog('火堆熊熊燃烧。');
+        _addLog(
+            GameSettings.languageManager.get('fire_roaring', category: 'room'));
         widget.gameState.room['temperature'] = 'hot';
       }
       widget.gameState.notifyListeners();
     } else {
-      _addLog('没有木头。');
+      _addLog(GameSettings.languageManager.get('no_wood', category: 'room'));
     }
   }
 
@@ -127,7 +135,8 @@ class _RoomScreenState extends State<RoomScreen> {
 
     widget.gameState.addResource('wood', amount);
     widget.gameState.notifyListeners();
-    _addLog('收集了一些木头。');
+    _addLog(
+        GameSettings.languageManager.get('gathered_wood', category: 'room'));
   }
 
   // 建造建筑
@@ -575,8 +584,9 @@ class _RoomScreenState extends State<RoomScreen> {
     _buildings.forEach((buildingId, count) {
       if (count > 0 &&
           widget.gameState.availableBuildings[buildingId] != null) {
+        // 获取多语言建筑名称
         String name =
-            widget.gameState.availableBuildings[buildingId]!['name'] as String;
+            GameSettings.languageManager.get(buildingId, category: 'buildings');
         buildingIcons.add(
           Tooltip(
             message: '$name: $count',
@@ -790,7 +800,9 @@ class _RoomScreenState extends State<RoomScreen> {
   // 修改建筑菜单项显示
   Widget _buildBuildingMenuItem(
       String id, Map<String, dynamic> building, bool canBuild) {
-    String name = building['name'] as String;
+    // 使用LanguageManager获取建筑名称，如果没有则使用默认值
+    String name = GameSettings.languageManager.get(id, category: 'buildings');
+    // 对于描述，暂时使用原始值，后期可以考虑添加到翻译文件中
     String description = building['description'] as String;
     Map<String, dynamic> cost = building['cost'] as Map<String, dynamic>;
     int currentLevel = widget.gameState.buildingLevels[id] ?? 1;
@@ -935,7 +947,8 @@ class _RoomScreenState extends State<RoomScreen> {
             backgroundColor: Colors.grey.shade800,
             minimumSize: const Size(double.infinity, 40),
           ),
-          child: const Text('返回'),
+          child: Text(
+              GameSettings.languageManager.get('back', category: 'common')),
         ),
       ],
     );
@@ -1044,7 +1057,8 @@ class _RoomScreenState extends State<RoomScreen> {
             backgroundColor: Colors.grey.shade800,
             minimumSize: const Size(double.infinity, 40),
           ),
-          child: const Text('返回'),
+          child: Text(
+              GameSettings.languageManager.get('back', category: 'common')),
         ),
       ],
     );
@@ -1271,7 +1285,8 @@ class _RoomScreenState extends State<RoomScreen> {
                 backgroundColor: Colors.grey.shade800,
                 minimumSize: const Size(double.infinity, 40),
               ),
-              child: const Text('返回'),
+              child: Text(
+                  GameSettings.languageManager.get('back', category: 'common')),
             ),
           ],
         ),
@@ -1455,7 +1470,8 @@ class _RoomScreenState extends State<RoomScreen> {
                 backgroundColor: Colors.grey.shade800,
                 minimumSize: const Size(double.infinity, 40),
               ),
-              child: const Text('返回'),
+              child: Text(
+                  GameSettings.languageManager.get('back', category: 'common')),
             ),
             const SizedBox(height: 8),
             ElevatedButton(
@@ -1689,7 +1705,8 @@ class _RoomScreenState extends State<RoomScreen> {
             backgroundColor: Colors.grey.shade800,
             minimumSize: const Size(double.infinity, 40),
           ),
-          child: const Text('返回'),
+          child: Text(
+              GameSettings.languageManager.get('back', category: 'common')),
         ),
       ],
     );

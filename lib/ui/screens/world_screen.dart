@@ -224,7 +224,10 @@ class _WorldScreenState extends State<WorldScreen> {
             // 返回村庄按钮
             TextButton.icon(
               icon: const Icon(Icons.home, color: Colors.white),
-              label: const Text('村庄', style: TextStyle(color: Colors.white)),
+              label: Text(
+                  GameSettings.languageManager
+                      .get('village', category: 'world'),
+                  style: const TextStyle(color: Colors.white)),
               onPressed: () {
                 widget.gameState.currentLocation = 'room';
                 widget.gameState.notifyListeners();
@@ -257,13 +260,16 @@ class _WorldScreenState extends State<WorldScreen> {
   // 构建地图
   Widget _buildMap() {
     if (widget.worldSystem.map.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('地图生成中...', style: TextStyle(color: Colors.white)),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text(
+                GameSettings.languageManager
+                    .get('map_loading', category: 'world'),
+                style: const TextStyle(color: Colors.white)),
           ],
         ),
       );
