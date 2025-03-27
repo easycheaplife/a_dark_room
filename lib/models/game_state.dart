@@ -9,6 +9,8 @@ import 'dart:math';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/game_settings.dart';
+import 'world_system.dart';
+import 'path_system.dart';
 
 class GameState extends ChangeNotifier {
   // 基本状态
@@ -204,6 +206,12 @@ class GameState extends ChangeNotifier {
 
   // 添加战斗系统
   final CombatSystem combatSystem = CombatSystem();
+
+  // 添加世界系统
+  final WorldSystem worldSystem = WorldSystem();
+
+  // 添加路径系统
+  final PathSystem pathSystem = PathSystem();
 
   // 初始化事件系统
   void initEventSystem() {
@@ -508,6 +516,8 @@ class GameState extends ChangeNotifier {
       'gameLogs': gameLogs,
       'playerStats': _playerStats,
       'combatSystem': combatSystem.toJson(),
+      'worldSystem': worldSystem.toJson(),
+      'pathSystem': pathSystem.toJson(),
     };
   }
 
@@ -547,6 +557,12 @@ class GameState extends ChangeNotifier {
     }
     if (json.containsKey('combatSystem')) {
       combatSystem.fromJson(json['combatSystem']);
+    }
+    if (json.containsKey('worldSystem')) {
+      worldSystem.fromJson(json['worldSystem']);
+    }
+    if (json.containsKey('pathSystem')) {
+      pathSystem.fromJson(json['pathSystem']);
     }
   }
 
@@ -1014,6 +1030,18 @@ class GameState extends ChangeNotifier {
       if (saveData['craftingSystem'] != null) {
         craftingSystem.fromJson(saveData['craftingSystem']);
         print('Loaded crafting system state');
+      }
+
+      // 加载世界系统状态
+      if (saveData['worldSystem'] != null) {
+        worldSystem.fromJson(saveData['worldSystem']);
+        print('Loaded world system state');
+      }
+
+      // 加载路径系统状态
+      if (saveData['pathSystem'] != null) {
+        pathSystem.fromJson(saveData['pathSystem']);
+        print('Loaded path system state');
       }
 
       print('Game loaded successfully');

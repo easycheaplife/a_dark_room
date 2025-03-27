@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'ui/screens/game_screen.dart';
 import 'models/game_state.dart';
+import 'engine/dev_tools.dart'; // 导入开发者工具
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // 确保 Flutter 绑定初始化
@@ -29,6 +30,9 @@ void main() async {
   } catch (e) {
     print('Error during save game loading: $e');
   }
+
+  // 初始化开发者工具
+  DevTools.init(gameState);
 
   runApp(MyApp(gameState: gameState));
 }

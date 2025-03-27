@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../models/game_state.dart';
 import '../../models/event_system.dart';
 import '../../config/game_settings.dart';
+import '../../engine/dev_tools.dart';
 
 /// 房间屏幕 - 游戏的起始区域
 class RoomScreen extends StatefulWidget {
@@ -286,8 +288,88 @@ class _RoomScreenState extends State<RoomScreen> {
 
   @override
   Widget build(BuildContext context) {
+    String roomTempText = _getRoomTempText();
+
     return Scaffold(
       backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: Text(roomTempText),
+        backgroundColor: Colors.brown.shade800,
+        actions: [
+          // 开发者菜单按钮，仅在开发模式下显示
+          if (kDebugMode)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.bug_report),
+              tooltip: '开发者菜单',
+              onSelected: (String value) {
+                switch (value) {
+                  case 'path':
+                    DevTools.quickJumpToPath(widget.gameState);
+                    break;
+                  case 'world':
+                    DevTools.quickJumpToWorld(widget.gameState);
+                    break;
+                  case 'resources':
+                    DevTools.addUnlimitedResources(widget.gameState);
+                    _showMessage('已添加资源');
+                    break;
+                  case 'unlock':
+                    DevTools.unlockAllFeatures(widget.gameState);
+                    _showMessage('已解锁所有功能');
+                    break;
+                }
+              },
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                const PopupMenuItem<String>(
+                  value: 'path',
+                  child: Text('测试路径系统'),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'world',
+                  child: Text('直接进入世界'),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'resources',
+                  child: Text('添加资源'),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'unlock',
+                  child: Text('解锁所有功能'),
+                ),
+              ],
+            ),
+          if (widget.gameState.outsideUnlocked)
+            IconButton(
+              icon: const Icon(Icons.nature_people),
+              tooltip: '前往荒野',
+              onPressed: () {
+                widget.gameState.currentLocation = 'outside';
+                widget.gameState.notifyListeners();
+              },
+            ),
+          if (widget.gameState.storeOpened)
+            IconButton(
+              icon: const Icon(Icons.map),
+              tooltip: '探索路径',
+              onPressed: () {
+                widget.gameState.currentLocation = 'path';
+                widget.gameState.notifyListeners();
+              },
+            ),
+          IconButton(
+            icon: const Icon(Icons.save),
+            tooltip: '保存游戏',
+            onPressed: () async {
+              try {
+                await widget.gameState.saveGame();
+                _showMessage('游戏已保存');
+              } catch (e) {
+                _showMessage('保存失败');
+              }
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -1525,6 +1607,35 @@ class _RoomScreenState extends State<RoomScreen> {
           child: const Text('返回'),
         ),
       ],
+    );
+  }
+
+  // 获取房间温度文本
+  String _getRoomTempText() {
+    String temp = '';
+    switch (widget.gameState.room['temperature']) {
+      case 'cold':
+        temp = '寒冷的房间';
+        break;
+      case 'mild':
+        temp = '温和的房间';
+        break;
+      case 'warm':
+        temp = '温暖的房间';
+        break;
+      case 'hot':
+        temp = '炎热的房间';
+        break;
+      default:
+        temp = '房间';
+    }
+    return temp;
+  }
+
+  // 显示提示消息
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 }

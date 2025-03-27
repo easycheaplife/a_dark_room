@@ -812,4 +812,15 @@ class GameSettings {
       'tool_multiplier': 1.4,
     },
   };
+
+  // 开发者相关设置
+  static const bool DEV_MODE = true; // 开发者模式总开关
+
+  // 开发者选项
+  static const Map<String, bool> DEV_OPTIONS = {
+    'QUICK_TEST_PATH': true, // 快速测试路径系统
+    'UNLIMITED_RESOURCES': true, // 无限资源
+    'SKIP_TUTORIALS': true, // 跳过教程
+    'UNLOCK_ALL': true, // 解锁所有功能
+  };
 }

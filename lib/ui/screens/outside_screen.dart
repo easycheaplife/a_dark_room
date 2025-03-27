@@ -368,6 +368,72 @@ class _OutsideScreenState extends State<OutsideScreen> {
     );
   }
 
+  // 构建资源栏
+  Widget _buildResourceBar() {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.brown.shade800,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 3,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildResourceItem('wood', Icons.forest),
+          _buildResourceItem('meat', Icons.restaurant),
+          _buildResourceItem('fur', Icons.pets),
+          _buildResourceItem('water', Icons.water_drop),
+        ],
+      ),
+    );
+  }
+
+  // 构建资源项
+  Widget _buildResourceItem(String resource, IconData icon) {
+    return Tooltip(
+      message: resource,
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.white, size: 16),
+          const SizedBox(width: 4),
+          Text(
+            '${_resources[resource] ?? 0}',
+            style: const TextStyle(color: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 构建内容区域
+  Widget _buildContentArea() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_isHunting && widget.gameState.combatSystem.isInCombat)
+            _buildCombatScreen(),
+          if (!_isHunting) ...[
+            _buildLocationSelector(),
+            const SizedBox(height: 16),
+            _buildResourceDisplay(),
+          ],
+          const SizedBox(height: 16),
+          _buildGameLog(),
+          const SizedBox(height: 16),
+          _buildActionButtons(),
+        ],
+      ),
+    );
+  }
+
   // 构建资源显示
   Widget _buildResourceDisplay() {
     return Container(
@@ -729,46 +795,63 @@ class _OutsideScreenState extends State<OutsideScreen> {
     );
   }
 
+  // 添加导航按钮区域
+  Widget _buildNavigationButtons() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // 返回村庄按钮
+          ElevatedButton.icon(
+            icon: const Icon(Icons.home),
+            label: const Text('返回村庄'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.brown.shade800,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              widget.gameState.currentLocation = 'room';
+              widget.gameState.notifyListeners();
+            },
+          ),
+
+          // 前往探索按钮
+          ElevatedButton.icon(
+            icon: const Icon(Icons.explore),
+            label: const Text('探索荒野'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green.shade800,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              widget.gameState.currentLocation = 'path';
+              widget.gameState.notifyListeners();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (_isHunting && widget.gameState.combatSystem.isInCombat)
-                      _buildCombatScreen(),
-                    if (!_isHunting) ...[
-                      _buildLocationSelector(),
-                      const SizedBox(height: 16),
-                      _buildResourceDisplay(),
-                    ],
-                    const SizedBox(height: 16),
-                    _buildGameLog(),
-                  ],
-                ),
-              ),
-            ),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.black,
-                border: Border(
-                  top: BorderSide(
-                    color: Colors.grey.shade900,
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: _buildActionButtons(),
-            ),
-          ],
-        ),
+      backgroundColor: Colors.brown.shade100,
+      appBar: AppBar(
+        title: const Text('村外'),
+        backgroundColor: Colors.brown.shade800,
+      ),
+      body: Column(
+        children: [
+          // 资源和状态显示
+          _buildResourceBar(),
+
+          // 主要内容区域
+          Expanded(
+            child: _buildContentArea(),
+          ),
+        ],
       ),
     );
   }
