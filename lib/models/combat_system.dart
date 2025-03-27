@@ -221,9 +221,15 @@ class CombatSystem {
       state.useResource('bullet', 1);
     }
 
+    // Use language manager to get localized damage message
+    String damageMessage = GameSettings.languageManager
+        .get('damage_message', category: 'combat')
+        .replaceAll('%d', '$playerDamage')
+        .replaceFirst('%d', '$enemyDamage');
+
     return {
       'success': true,
-      'message': '造成了 $playerDamage 点伤害，受到了 $enemyDamage 点伤害',
+      'message': damageMessage,
       'playerHealth': _combatState['playerHealth'],
       'enemyHealth': _combatState['enemyHealth'],
       'turnsLeft': _combatState['turnsLeft'],
@@ -236,7 +242,9 @@ class CombatSystem {
     Map<String, dynamic> result = {
       'success': true,
       'victory': victory,
-      'message': victory ? '战斗胜利！' : '战斗失败...',
+      'message': victory
+          ? GameSettings.languageManager.get('victory', category: 'combat')
+          : GameSettings.languageManager.get('defeat', category: 'combat'),
       'loot': <String, int>{},
     };
 

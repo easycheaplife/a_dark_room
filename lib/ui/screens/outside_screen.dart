@@ -104,7 +104,8 @@ class _OutsideScreenState extends State<OutsideScreen> {
           _locationInfo[_currentLocation]?['exploration_time'] ?? 30;
     });
 
-    _addLog('开始在${_locationInfo[_currentLocation]['name']}探索...');
+    _addLog(
+        '${GameSettings.languageManager.get('exploring_in', category: 'locations')} ${_locationInfo[_currentLocation]['name']}...');
     _explorationTimer();
   }
 
@@ -117,7 +118,8 @@ class _OutsideScreenState extends State<OutsideScreen> {
           _locationInfo[_currentLocation]?['scavenging_time'] ?? 20;
     });
 
-    _addLog('开始在${_locationInfo[_currentLocation]['name']}搜索...');
+    _addLog(
+        '${GameSettings.languageManager.get('scavenging_in', category: 'locations')} ${_locationInfo[_currentLocation]['name']}...');
     _scavengingTimer();
   }
 
@@ -142,7 +144,15 @@ class _OutsideScreenState extends State<OutsideScreen> {
     }
 
     if (widget.gameState.combatSystem.startCombat(enemyId, widget.gameState)) {
-      _addLog('遭遇了${widget.gameState.combatSystem.enemies[enemyId]!.name}！');
+      // Get the translated enemy name
+      String enemyName = GameSettings.languageManager.get(
+          widget.gameState.combatSystem.enemies[enemyId]!.id,
+          category: 'combat');
+      // Get the translated encounter message with enemy name
+      String encounterMessage = GameSettings.languageManager
+          .get('encountered', category: 'combat')
+          .replaceAll('%s', enemyName);
+      _addLog(encounterMessage);
     }
   }
 
@@ -277,13 +287,32 @@ class _OutsideScreenState extends State<OutsideScreen> {
     String enemyId = widget.gameState.combat['current_enemy'];
     Map<String, dynamic> enemy = widget.gameState.enemies[enemyId]!;
 
+    // Get the translated enemy name
+    String enemyName = GameSettings.languageManager
+        .get(enemy['name_key'] ?? enemyId, category: 'combat');
+
+    // Format health and turns strings with proper translations
+    String enemyHealthText = GameSettings.languageManager
+        .get('enemy_health_fraction', category: 'combat')
+        .replaceFirst('%d', '${enemy['health']}')
+        .replaceFirst('%d', '${enemy['health']}');
+
+    String playerHealthText = GameSettings.languageManager
+        .get('player_health_fraction', category: 'combat')
+        .replaceFirst('%d', '${widget.gameState.combat['player_health']}')
+        .replaceFirst('%d', '${widget.gameState.combat['player_max_health']}');
+
+    String turnsLeftText = GameSettings.languageManager
+        .get('turns_left_value', category: 'combat')
+        .replaceFirst('%d', '${widget.gameState.combat['combat_round']}');
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.grey.shade900,
         title: Text(
-          '战斗 - ${enemy['name']}',
+          '${GameSettings.languageManager.get('combat_title', category: 'combat')}$enemyName',
           style: const TextStyle(color: Colors.white),
         ),
         content: Column(
@@ -291,16 +320,16 @@ class _OutsideScreenState extends State<OutsideScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '敌人生命值: ${enemy['health']}',
+              enemyHealthText,
               style: const TextStyle(color: Colors.white),
             ),
             Text(
-              '你的生命值: ${widget.gameState.combat['player_health']}',
+              playerHealthText,
               style: const TextStyle(color: Colors.white),
             ),
             const SizedBox(height: 16),
             Text(
-              '回合: ${widget.gameState.combat['combat_round']}',
+              turnsLeftText,
               style: const TextStyle(color: Colors.white),
             ),
           ],
@@ -319,14 +348,16 @@ class _OutsideScreenState extends State<OutsideScreen> {
                 _showCombatDialog();
               }
             },
-            child: const Text('攻击'),
+            child: Text(
+                GameSettings.languageManager.get('attack', category: 'combat')),
           ),
           TextButton(
             onPressed: () {
               widget.gameState.flee();
               Navigator.of(context).pop();
             },
-            child: const Text('逃跑'),
+            child: Text(
+                GameSettings.languageManager.get('flee', category: 'combat')),
           ),
         ],
       ),
@@ -652,7 +683,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
                     backgroundColor: Colors.grey.shade800,
                   ),
                   child: Text(GameSettings.languageManager
-                      .get('small_hunt', category: 'actions')),
+                      .get('small_hunt', category: 'combat')),
                 ),
                 ElevatedButton(
                   onPressed: () => _startHunting('large'),
@@ -660,7 +691,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
                     backgroundColor: Colors.grey.shade800,
                   ),
                   child: Text(GameSettings.languageManager
-                      .get('large_hunt', category: 'actions')),
+                      .get('large_hunt', category: 'combat')),
                 ),
               ],
               // 收集水按钮
@@ -754,6 +785,25 @@ class _OutsideScreenState extends State<OutsideScreen> {
     final enemyHealth = combatState['enemyHealth'] as int;
     final turnsLeft = combatState['turnsLeft'] as int;
 
+    // Get enemy name translation
+    String enemyName =
+        GameSettings.languageManager.get(enemy.id, category: 'combat');
+
+    // Get formatted health and turns text
+    String enemyHealthText = GameSettings.languageManager
+        .get('enemy_health_fraction', category: 'combat')
+        .replaceFirst('%d', '$enemyHealth')
+        .replaceFirst('%d', '${enemy.health}');
+
+    String playerHealthText = GameSettings.languageManager
+        .get('player_health_fraction', category: 'combat')
+        .replaceFirst('%d', '$playerHealth')
+        .replaceFirst('%d', '100');
+
+    String turnsLeftText = GameSettings.languageManager
+        .get('turns_left_value', category: 'combat')
+        .replaceFirst('%d', '$turnsLeft');
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -766,7 +816,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '战斗 - ${enemy.name}',
+            '${GameSettings.languageManager.get('combat_title', category: 'combat')}$enemyName',
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -775,16 +825,16 @@ class _OutsideScreenState extends State<OutsideScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            '敌人生命值: $enemyHealth / ${enemy.health}',
+            enemyHealthText,
             style: const TextStyle(color: Colors.white),
           ),
           Text(
-            '你的生命值: $playerHealth / 100',
+            playerHealthText,
             style: const TextStyle(color: Colors.white),
           ),
           const SizedBox(height: 16),
           Text(
-            '剩余回合: $turnsLeft',
+            turnsLeftText,
             style: const TextStyle(color: Colors.white),
           ),
           const SizedBox(height: 16),
@@ -800,16 +850,25 @@ class _OutsideScreenState extends State<OutsideScreen> {
                     if (result.containsKey('victory')) {
                       // 战斗结束
                       if (result['victory']) {
-                        _addLog('战斗胜利！获得了战利品：');
+                        _addLog(GameSettings.languageManager
+                                .get('victory', category: 'combat') +
+                            ' ' +
+                            GameSettings.languageManager
+                                .get('loot_gained', category: 'combat'));
                         (result['loot'] as Map<String, int>)
                             .forEach((resource, amount) {
-                          _addLog('$resource: $amount');
+                          _addLog(
+                              '${GameSettings.languageManager.get(resource, category: 'resources')}: $amount');
                         });
                         if (result.containsKey('experience')) {
-                          _addLog('获得了 ${result['experience']} 点经验');
+                          _addLog(GameSettings.languageManager.get(
+                                  'experience_gained',
+                                  category: 'combat') +
+                              ' ${result['experience']}');
                         }
                       } else {
-                        _addLog('战斗失败...');
+                        _addLog(GameSettings.languageManager
+                            .get('defeat', category: 'combat'));
                       }
                       setState(() {
                         _isHunting = false;
@@ -825,7 +884,8 @@ class _OutsideScreenState extends State<OutsideScreen> {
                   backgroundColor: Colors.blue.shade700,
                   minimumSize: const Size(100, 40),
                 ),
-                child: const Text('攻击'),
+                child: Text(GameSettings.languageManager
+                    .get('attack', category: 'combat')),
               ),
               ElevatedButton(
                 onPressed: () {
@@ -834,13 +894,15 @@ class _OutsideScreenState extends State<OutsideScreen> {
                     _isHunting = false;
                     _currentHuntType = '';
                   });
-                  _addLog('逃离了战斗');
+                  _addLog(GameSettings.languageManager
+                      .get('fled_combat', category: 'combat'));
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red.shade700,
                   minimumSize: const Size(100, 40),
                 ),
-                child: const Text('逃跑'),
+                child: Text(GameSettings.languageManager
+                    .get('flee', category: 'combat')),
               ),
             ],
           ),

@@ -280,6 +280,7 @@ class GameSettings {
   // 敌人配置
   static const Map<String, Map<String, dynamic>> enemies = {
     'wolf': {
+      'name_key': 'wolf',
       'name': '狼',
       'health': 5,
       'attack': 2,
@@ -288,6 +289,7 @@ class GameSettings {
       'loot_chance': 0.7,
     },
     'bear': {
+      'name_key': 'bear',
       'name': '熊',
       'health': 8,
       'attack': 4,
@@ -296,6 +298,7 @@ class GameSettings {
       'loot_chance': 0.8,
     },
     'snake': {
+      'name_key': 'snake',
       'name': '毒蛇',
       'health': 3,
       'attack': 1,
@@ -304,6 +307,7 @@ class GameSettings {
       'loot_chance': 0.6,
     },
     'bat': {
+      'name_key': 'bat',
       'name': '蝙蝠',
       'health': 2,
       'attack': 1,
@@ -312,6 +316,7 @@ class GameSettings {
       'loot_chance': 0.5,
     },
     'spider': {
+      'name_key': 'spider',
       'name': '蜘蛛',
       'health': 4,
       'attack': 2,
@@ -320,6 +325,7 @@ class GameSettings {
       'loot_chance': 0.6,
     },
     'crocodile': {
+      'name_key': 'crocodile',
       'name': '鳄鱼',
       'health': 7,
       'attack': 3,
@@ -328,6 +334,7 @@ class GameSettings {
       'loot_chance': 0.7,
     },
     'scorpion': {
+      'name_key': 'scorpion',
       'name': '蝎子',
       'health': 3,
       'attack': 2,
@@ -336,6 +343,7 @@ class GameSettings {
       'loot_chance': 0.6,
     },
     'ghost': {
+      'name_key': 'ghost',
       'name': '幽灵',
       'health': 6,
       'attack': 3,
