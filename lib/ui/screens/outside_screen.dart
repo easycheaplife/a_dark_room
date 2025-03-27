@@ -75,8 +75,10 @@ class _OutsideScreenState extends State<OutsideScreen> {
     if (_discoveredLocations.isEmpty) {
       _discoveredLocations.add('forest');
       _locationInfo['forest'] = {
-        'name': '森林',
-        'description': '一片茂密的森林，有丰富的资源。',
+        'name':
+            GameSettings.languageManager.get('forest', category: 'locations'),
+        'description': GameSettings.languageManager
+            .get('forest_desc', category: 'locations'),
         'resources': ['wood', 'meat', 'fur'],
         'dangers': ['wolf'],
         'exploration_time': 30,
@@ -711,48 +713,33 @@ class _OutsideScreenState extends State<OutsideScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '当前位置: ${_locationInfo[_currentLocation]?['name'] ?? '未知'}',
+            '${GameSettings.languageManager.get('current_location', category: 'locations')}: ${_locationInfo[_currentLocation]?["name"] ?? GameSettings.languageManager.get('unknown', category: 'common')}',
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
-            _locationInfo[_currentLocation]?['description'] ?? '',
-            style: TextStyle(
-              color: Colors.grey.shade300,
-              fontSize: 14,
-            ),
+            _locationInfo[_currentLocation]?["description"] ?? "",
+            style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
           ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
-            runSpacing: 8,
-            children: _discoveredLocations.map((location) {
-              bool isCurrent = location == _currentLocation;
-              return ElevatedButton(
-                onPressed: isCurrent
-                    ? null
-                    : () {
-                        setState(() {
-                          _currentLocation = location;
-                        });
+            children: _discoveredLocations
+                .map((loc) => ChoiceChip(
+                      label: Text(_locationInfo[loc]?["name"] ?? loc),
+                      selected: _currentLocation == loc,
+                      onSelected: (selected) {
+                        if (selected) {
+                          setState(() {
+                            _currentLocation = loc;
+                          });
+                        }
                       },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      isCurrent ? Colors.blue.shade900 : Colors.grey.shade800,
-                  disabledBackgroundColor: Colors.grey.shade900,
-                ),
-                child: Text(
-                  _locationInfo[location]?['name'] ?? location,
-                  style: TextStyle(
-                    color: isCurrent ? Colors.white : Colors.grey.shade300,
-                  ),
-                ),
-              );
-            }).toList(),
+                    ))
+                .toList(),
           ),
         ],
       ),

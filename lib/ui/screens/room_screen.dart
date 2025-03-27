@@ -1211,7 +1211,8 @@ class _RoomScreenState extends State<RoomScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        item.name,
+                        GameSettings.languageManager
+                            .get(itemId, category: 'resources'),
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -1230,14 +1231,14 @@ class _RoomScreenState extends State<RoomScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '${GameSettings.languageManager.get('buy', category: 'common')}: $buyPrice',
+                        '${GameSettings.languageManager.get('buy', category: 'trade')}: $buyPrice',
                         style: TextStyle(
                           color: Colors.green.shade300,
                           fontSize: 12,
                         ),
                       ),
                       Text(
-                        '${GameSettings.languageManager.get('sell', category: 'common')}: $sellPrice',
+                        '${GameSettings.languageManager.get('sell', category: 'trade')}: $sellPrice',
                         style: TextStyle(
                           color: Colors.red.shade300,
                           fontSize: 12,
@@ -1254,7 +1255,8 @@ class _RoomScreenState extends State<RoomScreen> {
                         onPressed: widget.gameState.canSell(itemId, 1)
                             ? () {
                                 if (widget.gameState.sellItem(itemId, 1)) {
-                                  _addLog('卖出了1个${item.name}');
+                                  _addLog(
+                                      '${GameSettings.languageManager.get('sold', category: 'trade')} 1 ${GameSettings.languageManager.get(itemId, category: 'resources')}');
                                   _updateState();
                                 }
                               }
@@ -1266,7 +1268,8 @@ class _RoomScreenState extends State<RoomScreen> {
                         onPressed: widget.gameState.canBuy(itemId, 1)
                             ? () {
                                 if (widget.gameState.buyItem(itemId, 1)) {
-                                  _addLog('购买了1个${item.name}');
+                                  _addLog(
+                                      '${GameSettings.languageManager.get('bought', category: 'trade')} 1 ${GameSettings.languageManager.get(itemId, category: 'resources')}');
                                   _updateState();
                                 }
                               }
@@ -1321,7 +1324,7 @@ class _RoomScreenState extends State<RoomScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '存档目录: ${GameState.SAVE_DIRECTORY}',
+                    '${GameSettings.languageManager.get('save_directory', category: 'save')}: ${GameState.SAVE_DIRECTORY}',
                     style: const TextStyle(color: Colors.white),
                   ),
                   const SizedBox(height: 8),
@@ -1329,21 +1332,26 @@ class _RoomScreenState extends State<RoomScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '自动存档',
+                        GameSettings.languageManager
+                            .get('auto_save', category: 'save'),
                         style: TextStyle(color: Colors.grey.shade300),
                       ),
                       Switch(
                         value: widget.gameState.autoSaveEnabled,
                         onChanged: (value) {
                           widget.gameState.setAutoSaveEnabled(value);
-                          _addLog(value ? '已启用自动存档' : '已禁用自动存档');
+                          _addLog(value
+                              ? GameSettings.languageManager
+                                  .get('auto_save_enabled', category: 'save')
+                              : GameSettings.languageManager
+                                  .get('auto_save_disabled', category: 'save'));
                         },
                       ),
                     ],
                   ),
                   if (widget.gameState.autoSaveEnabled)
                     Text(
-                      '上次自动存档: ${widget.gameState.lastAutoSave.toString().substring(0, 16)}',
+                      '${GameSettings.languageManager.get('last_auto_save', category: 'save')}: ${widget.gameState.lastAutoSave.toString().substring(0, 16)}',
                       style:
                           TextStyle(color: Colors.grey.shade400, fontSize: 12),
                     ),
@@ -1374,7 +1382,7 @@ class _RoomScreenState extends State<RoomScreen> {
                 ),
                 child: ListTile(
                   title: Text(
-                    '存档 ${slot['slot'].substring(4)}',
+                    '${GameSettings.languageManager.get('save_slot', category: 'save')} ${slot['slot'].substring(4)}',
                     style: TextStyle(
                       color: hasSave ? Colors.white : Colors.grey,
                       fontWeight: FontWeight.bold,
@@ -1384,7 +1392,7 @@ class _RoomScreenState extends State<RoomScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '时间: $timestamp',
+                        '${GameSettings.languageManager.get('time', category: 'save')}: $timestamp',
                         style: TextStyle(
                           color: hasSave
                               ? Colors.grey.shade300
@@ -1394,14 +1402,14 @@ class _RoomScreenState extends State<RoomScreen> {
                       ),
                       if (hasSave) ...[
                         Text(
-                          '位置: $location',
+                          '${GameSettings.languageManager.get('location', category: 'save')}: $location',
                           style: TextStyle(
                             color: Colors.grey.shade300,
                             fontSize: 12,
                           ),
                         ),
                         Text(
-                          '人口: $population',
+                          '${GameSettings.languageManager.get('population', category: 'save')}: $population',
                           style: TextStyle(
                             color: Colors.grey.shade300,
                             fontSize: 12,
@@ -1482,16 +1490,20 @@ class _RoomScreenState extends State<RoomScreen> {
                 bool? confirm = await showDialog<bool>(
                   context: context,
                   builder: (context) => AlertDialog(
-                    title: const Text('确认清除所有存档'),
-                    content: const Text('确定要清除所有存档吗？此操作不可恢复。'),
+                    title: Text(GameSettings.languageManager
+                        .get('confirm_clear', category: 'save')),
+                    content: Text(GameSettings.languageManager
+                        .get('confirm_clear_message', category: 'save')),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.of(context).pop(false),
-                        child: const Text('取消'),
+                        child: Text(GameSettings.languageManager
+                            .get('cancel', category: 'common')),
                       ),
                       TextButton(
                         onPressed: () => Navigator.of(context).pop(true),
-                        child: const Text('清除'),
+                        child: Text(GameSettings.languageManager
+                            .get('delete', category: 'save')),
                       ),
                     ],
                   ),
@@ -1500,20 +1512,25 @@ class _RoomScreenState extends State<RoomScreen> {
                 if (confirm == true) {
                   try {
                     await widget.gameState.clearAllSaveSlots();
-                    _addLog('已清除所有存档');
+                    _addLog(GameSettings.languageManager
+                        .get('clear_success', category: 'save'));
                     await _refreshSaveMenu();
                   } catch (e) {
-                    _addLog('清除存档失败: $e');
+                    _addLog(
+                        '${GameSettings.languageManager.get('clear_failed', category: 'save')}: $e');
                     if (context.mounted) {
                       showDialog(
                         context: context,
                         builder: (context) => AlertDialog(
-                          title: const Text('错误'),
-                          content: Text('清除存档失败: $e'),
+                          title: Text(GameSettings.languageManager
+                              .get('error', category: 'path')),
+                          content: Text(
+                              '${GameSettings.languageManager.get('clear_failed', category: 'save')}: $e'),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.of(context).pop(),
-                              child: const Text('确定'),
+                              child: Text(GameSettings.languageManager
+                                  .get('confirm', category: 'common')),
                             ),
                           ],
                         ),
@@ -1526,7 +1543,8 @@ class _RoomScreenState extends State<RoomScreen> {
                 backgroundColor: Colors.red.shade900,
                 minimumSize: const Size(double.infinity, 40),
               ),
-              child: const Text('清除所有存档'),
+              child: Text(GameSettings.languageManager
+                  .get('clear_all_saves', category: 'save')),
             ),
           ],
         );
@@ -1556,16 +1574,20 @@ class _RoomScreenState extends State<RoomScreen> {
       bool? confirm = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('确认删除'),
-          content: Text('确定要删除存档 ${slotKey.substring(4)} 吗？'),
+          title: Text(GameSettings.languageManager
+              .get('confirm_delete', category: 'save')),
+          content: Text(
+              '${GameSettings.languageManager.get('confirm_delete_message', category: 'save')} ${slotKey.substring(4)}?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
+              child: Text(GameSettings.languageManager
+                  .get('cancel', category: 'common')),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('删除'),
+              child: Text(
+                  GameSettings.languageManager.get('delete', category: 'save')),
             ),
           ],
         ),
@@ -1573,7 +1595,8 @@ class _RoomScreenState extends State<RoomScreen> {
 
       if (confirm == true) {
         await widget.gameState.deleteSaveSlot(slotKey);
-        _addLog('删除了存档 ${slotKey.substring(4)}');
+        _addLog(
+            '${GameSettings.languageManager.get('delete_success', category: 'save')} ${slotKey.substring(4)}');
         await _refreshSaveMenu();
       }
     } catch (e) {
@@ -1643,7 +1666,7 @@ class _RoomScreenState extends State<RoomScreen> {
                         ),
                       ),
                       Text(
-                        '需要: ${_formatCost(recipe.ingredients)}',
+                        '${GameSettings.languageManager.get('requires', category: 'crafting')}: ${_formatCost(recipe.ingredients)}',
                         style: TextStyle(
                           color: canCraft
                               ? Colors.grey.shade400
@@ -1652,7 +1675,7 @@ class _RoomScreenState extends State<RoomScreen> {
                         ),
                       ),
                       Text(
-                        '产出: ${_formatCost(recipe.outputs)}',
+                        '${GameSettings.languageManager.get('output', category: 'crafting')}: ${_formatCost(recipe.outputs)}',
                         style: TextStyle(
                           color: Colors.green.shade300,
                           fontSize: 12,
