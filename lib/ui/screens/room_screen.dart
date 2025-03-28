@@ -307,111 +307,112 @@ class _RoomScreenState extends State<RoomScreen> {
         title: Text(roomTempText),
         backgroundColor: Colors.brown.shade800,
         actions: [
-          // 游戏菜单按钮，合并开发者和游戏功能
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.menu),
-            tooltip:
-                GameSettings.languageManager.get('game_menu', category: 'menu'),
-            onSelected: (String value) {
-              switch (value) {
-                case 'outside':
-                  widget.gameState.currentLocation = 'outside';
-                  setState(() {}); // Update UI
-                  break;
-                case 'explore':
-                  _explorePathAction();
-                  break;
-                case 'path':
-                  if (kDebugMode) DevTools.quickJumpToPath(widget.gameState);
-                  break;
-                case 'world':
-                  if (kDebugMode) DevTools.quickJumpToWorld(widget.gameState);
-                  break;
-                case 'resources':
-                  if (kDebugMode) {
-                    DevTools.addUnlimitedResources(widget.gameState);
-                    _showMessage(GameSettings.languageManager
-                        .get('resources_added', category: 'menu'));
-                  }
-                  break;
-                case 'unlock':
-                  if (kDebugMode) {
-                    DevTools.unlockAllFeatures(widget.gameState);
-                    _showMessage(GameSettings.languageManager
-                        .get('all_unlocked', category: 'menu'));
-                  }
-                  break;
-                case 'story_event':
-                  if (kDebugMode) _triggerStoryEventTest();
-                  break;
-                case 'progress_event':
-                  if (kDebugMode) _triggerProgressEventTest();
-                  break;
-              }
-            },
-            itemBuilder: (BuildContext context) {
-              List<PopupMenuEntry<String>> items = [];
-
-              // 添加基本游戏功能
-              if (widget.gameState.outsideUnlocked && kDebugMode) {
-                items.add(
-                  PopupMenuItem<String>(
-                    value: 'outside',
-                    child: Text(GameSettings.languageManager
-                        .get('go_outside', category: 'menu')),
-                  ),
-                );
-              }
-              if (widget.gameState.storeOpened) {
-                items.add(
-                  PopupMenuItem<String>(
-                    value: 'explore',
-                    child: Text(GameSettings.languageManager
-                        .get('explore_path', category: 'menu')),
-                  ),
-                );
-              }
-
-              // 只在开发模式下添加开发者功能
-              if (kDebugMode) {
-                if (items.isNotEmpty) {
-                  items.add(const PopupMenuDivider());
+          // 游戏菜单按钮，只在开发模式下显示
+          if (kDebugMode)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.menu),
+              tooltip: GameSettings.languageManager
+                  .get('game_menu', category: 'menu'),
+              onSelected: (String value) {
+                switch (value) {
+                  case 'outside':
+                    widget.gameState.currentLocation = 'outside';
+                    setState(() {}); // Update UI
+                    break;
+                  case 'explore':
+                    _explorePathAction();
+                    break;
+                  case 'path':
+                    if (kDebugMode) DevTools.quickJumpToPath(widget.gameState);
+                    break;
+                  case 'world':
+                    if (kDebugMode) DevTools.quickJumpToWorld(widget.gameState);
+                    break;
+                  case 'resources':
+                    if (kDebugMode) {
+                      DevTools.addUnlimitedResources(widget.gameState);
+                      _showMessage(GameSettings.languageManager
+                          .get('resources_added', category: 'menu'));
+                    }
+                    break;
+                  case 'unlock':
+                    if (kDebugMode) {
+                      DevTools.unlockAllFeatures(widget.gameState);
+                      _showMessage(GameSettings.languageManager
+                          .get('all_unlocked', category: 'menu'));
+                    }
+                    break;
+                  case 'story_event':
+                    if (kDebugMode) _triggerStoryEventTest();
+                    break;
+                  case 'progress_event':
+                    if (kDebugMode) _triggerProgressEventTest();
+                    break;
                 }
-                items.addAll([
-                  PopupMenuItem<String>(
-                    value: 'path',
-                    child: Text(GameSettings.languageManager
-                        .get('test_path', category: 'menu')),
-                  ),
-                  PopupMenuItem<String>(
-                    value: 'world',
-                    child: Text(GameSettings.languageManager
-                        .get('enter_world', category: 'menu')),
-                  ),
-                  PopupMenuItem<String>(
-                    value: 'resources',
-                    child: Text(GameSettings.languageManager
-                        .get('add_resources', category: 'menu')),
-                  ),
-                  PopupMenuItem<String>(
-                    value: 'unlock',
-                    child: Text(GameSettings.languageManager
-                        .get('unlock_all', category: 'menu')),
-                  ),
-                  PopupMenuItem<String>(
-                    value: 'story_event',
-                    child: Text("测试陌生人事件"),
-                  ),
-                  PopupMenuItem<String>(
-                    value: 'progress_event',
-                    child: Text("测试进度事件"),
-                  ),
-                ]);
-              }
+              },
+              itemBuilder: (BuildContext context) {
+                List<PopupMenuEntry<String>> items = [];
 
-              return items;
-            },
-          ),
+                // 添加基本游戏功能
+                if (widget.gameState.outsideUnlocked && kDebugMode) {
+                  items.add(
+                    PopupMenuItem<String>(
+                      value: 'outside',
+                      child: Text(GameSettings.languageManager
+                          .get('go_outside', category: 'menu')),
+                    ),
+                  );
+                }
+                if (widget.gameState.storeOpened) {
+                  items.add(
+                    PopupMenuItem<String>(
+                      value: 'explore',
+                      child: Text(GameSettings.languageManager
+                          .get('explore_path', category: 'menu')),
+                    ),
+                  );
+                }
+
+                // 只在开发模式下添加开发者功能
+                if (kDebugMode) {
+                  if (items.isNotEmpty) {
+                    items.add(const PopupMenuDivider());
+                  }
+                  items.addAll([
+                    PopupMenuItem<String>(
+                      value: 'path',
+                      child: Text(GameSettings.languageManager
+                          .get('test_path', category: 'menu')),
+                    ),
+                    PopupMenuItem<String>(
+                      value: 'world',
+                      child: Text(GameSettings.languageManager
+                          .get('enter_world', category: 'menu')),
+                    ),
+                    PopupMenuItem<String>(
+                      value: 'resources',
+                      child: Text(GameSettings.languageManager
+                          .get('add_resources', category: 'menu')),
+                    ),
+                    PopupMenuItem<String>(
+                      value: 'unlock',
+                      child: Text(GameSettings.languageManager
+                          .get('unlock_all', category: 'menu')),
+                    ),
+                    PopupMenuItem<String>(
+                      value: 'story_event',
+                      child: Text("测试陌生人事件"),
+                    ),
+                    PopupMenuItem<String>(
+                      value: 'progress_event',
+                      child: Text("测试进度事件"),
+                    ),
+                  ]);
+                }
+
+                return items;
+              },
+            ),
 
           // 语言切换按钮
           PopupMenuButton<String>(
