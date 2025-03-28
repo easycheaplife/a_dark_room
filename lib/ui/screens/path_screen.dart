@@ -129,22 +129,53 @@ class _PathScreenState extends State<PathScreen> {
     }
 
     try {
-      // 调用GameState的embarkonPath，它会处理所有出发逻辑
-      bool success = widget.gameState.embarkonPath();
-      if (success) {
-        _showMessage(GameSettings.languageManager
-            .get('going_to_world', category: 'path'));
-        if (kDebugMode) {
-          print('出发成功，正在前往世界');
+      // 显示加载对话框以提高感知性能
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: Colors.black87,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                Text(
+                  GameSettings.languageManager
+                      .get('going_to_world', category: 'path'),
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+
+      // 使用Future.delayed让UI能够更新并显示加载对话框
+      Future.delayed(const Duration(milliseconds: 100), () {
+        // 调用GameState的embarkonPath，它会处理所有出发逻辑
+        bool success = widget.gameState.embarkonPath();
+
+        // 关闭加载对话框
+        Navigator.of(context).pop();
+
+        if (success) {
+          if (kDebugMode) {
+            print('出发成功，正在前往世界');
+          }
+        } else {
+          _showMessage(GameSettings.languageManager
+              .get('cannot_embark', category: 'path'));
+          if (kDebugMode) {
+            print('出发失败');
+          }
         }
-      } else {
-        _showMessage(GameSettings.languageManager
-            .get('cannot_embark', category: 'path'));
-        if (kDebugMode) {
-          print('出发失败');
-        }
-      }
+      });
     } catch (e) {
+      // 确保在发生异常时对话框被关闭
+      Navigator.of(context, rootNavigator: true).pop();
+
       _showMessage(GameSettings.languageManager.get('error', category: 'path') +
           e.toString());
       if (kDebugMode) {

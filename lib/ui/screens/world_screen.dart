@@ -48,39 +48,87 @@ class _WorldScreenState extends State<WorldScreen> {
   // 添加游戏状态跟踪
   String _statusMessage = '';
   bool _canMove = true;
+  bool _isLoading = true; // 添加加载状态标志
+  List<Widget> _cachedTiles = []; // 缓存瓦片以减少重建
+  Size _lastSize = Size.zero; // 跟踪最后的视口大小
+  int _lastPlayerX = -1; // 跟踪最后的玩家位置X
+  int _lastPlayerY = -1; // 跟踪最后的玩家位置Y
 
   @override
   void initState() {
     super.initState();
-    // 确保世界地图已初始化
-    if (widget.worldSystem.map.isEmpty) {
-      if (kDebugMode) {
-        print('世界地图为空，初始化中...');
-      }
-      widget.worldSystem.init();
-    }
+    // 使用Future.delayed让界面有机会先渲染
+    Future.microtask(() => _initWorldScreen());
+  }
 
-    // 确保玩家位置已设置
-    if (widget.worldSystem.position.isEmpty) {
-      if (kDebugMode) {
-        print('玩家位置未设置，设置默认位置');
-      }
-      widget.worldSystem.position = [
-        WorldSystem.villagePos[0],
-        WorldSystem.villagePos[1]
-      ];
-    }
+  // 初始化世界屏幕 - 异步处理以避免卡顿
+  Future<void> _initWorldScreen() async {
+    setState(() {
+      _isLoading = true;
+    });
 
-    // 确保可见性掩码已初始化
-    if (widget.worldSystem.mask.isEmpty && widget.worldSystem.map.isNotEmpty) {
-      if (kDebugMode) {
-        print('更新可见性掩码');
+    try {
+      // 确保世界地图已初始化
+      if (widget.worldSystem.map.isEmpty) {
+        if (kDebugMode) {
+          print('世界地图为空，初始化中...');
+        }
+        await Future.microtask(() => widget.worldSystem.init());
+      } else {
+        if (kDebugMode) {
+          print(
+              '地图已存在，大小: ${widget.worldSystem.map.length}x${widget.worldSystem.map[0].length}');
+        }
       }
-      widget.worldSystem.updateMask();
-    }
 
-    // 检查世界地图状态
-    _validateWorldState();
+      // 确保玩家位置已设置
+      if (widget.worldSystem.position.isEmpty) {
+        if (kDebugMode) {
+          print('玩家位置未设置，设置默认位置');
+        }
+        widget.worldSystem.position = [
+          WorldSystem.villagePos[0],
+          WorldSystem.villagePos[1]
+        ];
+      } else {
+        if (kDebugMode) {
+          print('玩家当前位置：${widget.worldSystem.position}');
+        }
+      }
+
+      // 确保lastPosition已初始化
+      if (widget.worldSystem.lastPosition.isEmpty) {
+        widget.worldSystem.lastPosition =
+            List.from(widget.worldSystem.position);
+      }
+
+      // 确保可见性掩码已初始化
+      if (widget.worldSystem.mask.isEmpty &&
+          widget.worldSystem.map.isNotEmpty) {
+        if (kDebugMode) {
+          print('更新可见性掩码');
+        }
+        await Future.microtask(() => widget.worldSystem.updateMask());
+      }
+
+      // 检查世界地图状态
+      _validateWorldState();
+
+      // 初始化玩家位置跟踪
+      _lastPlayerX = widget.worldSystem.position[0];
+      _lastPlayerY = widget.worldSystem.position[1];
+    } catch (e) {
+      if (kDebugMode) {
+        print('初始化世界屏幕出错: $e');
+      }
+      _statusMessage = '初始化出错: $e';
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   // 验证世界状态
@@ -131,6 +179,27 @@ class _WorldScreenState extends State<WorldScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 如果正在加载，显示加载指示器
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                GameSettings.languageManager
+                    .get('map_loading', category: 'world'),
+                style: const TextStyle(color: Colors.white),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Column(
@@ -268,12 +337,12 @@ class _WorldScreenState extends State<WorldScreen> {
       );
     }
 
-    // 计算可视区域大小
-    int viewRadius = 15; // 增加地图可视半径
+    // 计算可视区域大小 - 减小默认视野大小以提高性能
+    int viewRadius = 10;
 
     // 开发模式下使用更大的视野
     if (kDebugMode || GameSettings.devMode) {
-      viewRadius = 20;
+      viewRadius = 15;
     }
 
     int playerX = widget.worldSystem.position[0];
@@ -291,117 +360,97 @@ class _WorldScreenState extends State<WorldScreen> {
     // 创建可视区域的网格
     return LayoutBuilder(
       builder: (context, constraints) {
-        double cellSize = min(
-          constraints.maxWidth / (endX - startX + 1),
-          constraints.maxHeight / (endY - startY + 1),
-        );
+        // 固定单元格大小以减少计算量和重新布局
+        double cellSize = 12.0;
 
-        // 最小和最大单元格大小限制
-        cellSize = cellSize.clamp(8.0, 40.0);
+        // 计算容器大小
+        double containerWidth = (endX - startX + 1) * cellSize;
+        double containerHeight = (endY - startY + 1) * cellSize;
+
+        // 预先创建瓦片列表以避免在构建过程中创建过多小部件
+        List<Widget> tiles = [];
+
+        // 批量创建瓦片
+        for (int y = startY; y <= endY; y++) {
+          for (int x = startX; x <= endX; x++) {
+            // 只渲染可见区域内的瓦片
+            if (widget.worldSystem.mask[y][x]) {
+              String tileChar = widget.worldSystem.map[y][x];
+              Color tileColor = tileColors[tileChar] ?? Colors.grey;
+              BorderRadius? borderRadius;
+
+              // 村庄特殊标记
+              if (tileChar == WorldSystem.tile['VILLAGE']) {
+                borderRadius = BorderRadius.circular(cellSize / 2);
+              }
+
+              tiles.add(
+                Positioned(
+                  left: (x - startX) * cellSize,
+                  top: (y - startY) * cellSize,
+                  width: cellSize,
+                  height: cellSize,
+                  child: Container(
+                    width: cellSize,
+                    height: cellSize,
+                    decoration: BoxDecoration(
+                      color: tileColor,
+                      borderRadius: borderRadius,
+                    ),
+                  ),
+                ),
+              );
+            } else {
+              // 对于未探索的区域，使用黑色块
+              tiles.add(
+                Positioned(
+                  left: (x - startX) * cellSize,
+                  top: (y - startY) * cellSize,
+                  width: cellSize,
+                  height: cellSize,
+                  child: Container(
+                    width: cellSize,
+                    height: cellSize,
+                    color: Colors.black,
+                  ),
+                ),
+              );
+            }
+          }
+        }
+
+        // 添加玩家标记
+        tiles.add(
+          Positioned(
+            left: (playerX - startX) * cellSize,
+            top: (playerY - startY) * cellSize,
+            width: cellSize,
+            height: cellSize,
+            child: Container(
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.person,
+                color: Colors.white,
+                size: cellSize * 0.7,
+              ),
+            ),
+          ),
+        );
 
         return SingleChildScrollView(
           scrollDirection: Axis.vertical,
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: SizedBox(
-              width: (endX - startX + 1) * cellSize,
-              height: (endY - startY + 1) * cellSize,
+              width: containerWidth,
+              height: containerHeight,
               child: Stack(
-                children: [
-                  // 绘制地图网格
-                  for (int y = startY; y <= endY; y++)
-                    for (int x = startX; x <= endX; x++)
-                      Positioned(
-                        left: (x - startX) * cellSize,
-                        top: (y - startY) * cellSize,
-                        width: cellSize,
-                        height: cellSize,
-                        child: _buildTile(x, y, cellSize),
-                      ),
-
-                  // 在最上层绘制玩家位置标记
-                  Positioned(
-                    left: (playerX - startX) * cellSize,
-                    top: (playerY - startY) * cellSize,
-                    width: cellSize,
-                    height: cellSize,
-                    child: Container(
-                      alignment: Alignment.center,
-                      child: Icon(
-                        Icons.person,
-                        color: Colors.white,
-                        size: cellSize * 0.7,
-                      ),
-                    ),
-                  ),
-                ],
+                children: tiles,
               ),
             ),
           ),
         );
       },
-    );
-  }
-
-  Widget _buildTile(int x, int y, double cellSize) {
-    // Get the current player position to calculate tile position
-    int playerX = widget.worldSystem.position[0];
-    int playerY = widget.worldSystem.position[1];
-
-    // Calculate the start coordinates based on viewRadius (same as in _buildMap)
-    int viewRadius = 5;
-    if (kDebugMode || GameSettings.devMode) {
-      viewRadius = 20;
-    }
-
-    int startX =
-        (playerX - viewRadius).clamp(0, widget.worldSystem.map[0].length - 1);
-    int startY =
-        (playerY - viewRadius).clamp(0, widget.worldSystem.map.length - 1);
-
-    String tile = widget.worldSystem.map[y][x];
-
-    // 只显示已探索区域
-    if (!widget.worldSystem.mask[y][x]) {
-      return Positioned(
-        left: (x - startX) * cellSize,
-        top: (y - startY) * cellSize,
-        width: cellSize,
-        height: cellSize,
-        child: Container(
-          width: cellSize,
-          height: cellSize,
-          color: Colors.black,
-        ),
-      );
-    }
-
-    // 更好的视觉区分
-    Color tileColor = tileColors[tile] ?? Colors.grey;
-    BorderRadius? borderRadius;
-
-    // 村庄特殊标记
-    if (tile == WorldSystem.tile['VILLAGE']) {
-      borderRadius = BorderRadius.circular(cellSize / 2);
-    }
-
-    return Positioned(
-      left: (x - startX) * cellSize,
-      top: (y - startY) * cellSize,
-      width: cellSize,
-      height: cellSize,
-      child: Stack(
-        children: [
-          Container(
-            width: cellSize,
-            height: cellSize,
-            decoration: BoxDecoration(
-              color: tileColor,
-              borderRadius: borderRadius,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -500,43 +549,42 @@ class _WorldScreenState extends State<WorldScreen> {
         .showSnackBar(const SnackBar(content: Text('位置已重置到村庄')));
   }
 
-  // 移动方法
+  // 移动方法优化
   void _move(String direction) {
     if (!_canMove) return;
 
-    if (kDebugMode) {
-      print('尝试移动: $direction');
-      print(
-          '移动前地块: ${widget.worldSystem.map[widget.worldSystem.position[1]][widget.worldSystem.position[0]]}');
-    }
+    // 暂时禁用移动以防止快速连点
+    setState(() {
+      _canMove = false;
+    });
 
-    bool moved =
+    // 执行移动
+    bool success =
         widget.worldSystem.move(direction, widget.pathSystem, widget.gameState);
 
-    if (moved) {
-      if (kDebugMode) {
-        print('移动成功!');
-        print(
-            '当前地块: ${widget.worldSystem.map[widget.worldSystem.position[1]][widget.worldSystem.position[0]]}');
+    if (success) {
+      // 检查玩家是否移动了位置
+      bool positionChanged = _lastPlayerX != widget.worldSystem.position[0] ||
+          _lastPlayerY != widget.worldSystem.position[1];
+
+      // 如果玩家位置变化了，清除瓦片缓存
+      if (positionChanged) {
+        _cachedTiles = [];
+        _lastPlayerX = widget.worldSystem.position[0];
+        _lastPlayerY = widget.worldSystem.position[1];
       }
 
-      // 重新验证世界状态
+      // 检查世界状态
       _validateWorldState();
-
-      // 如果触发了事件，更新UI
-      if (widget.gameState.currentEvent != null) {
-        setState(() {
-          _canMove = false;
-        });
-      }
     } else {
-      // 移动失败
       if (kDebugMode) {
         print('移动失败');
       }
     }
 
-    // 刷新界面
-    setState(() {});
+    // 重新启用移动
+    setState(() {
+      _canMove = true;
+    });
   }
 }

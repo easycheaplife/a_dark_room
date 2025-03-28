@@ -318,40 +318,51 @@ class WorldSystem extends ChangeNotifier {
     notifyListeners();
   }
 
-  // 生成世界地图
+  // 生成世界地图 - 优化版本
   void generateMap() {
     Random random = Random();
 
-    // 创建空白地图
-    map = List.generate(
-        radius * 2, (_) => List.generate(radius * 2, (_) => tile['BARRENS']!));
+    // 预先初始化数组大小，避免动态扩展
+    int size = radius * 2;
+    map = List.generate(size, (_) => List.filled(size, tile['BARRENS']!));
+    mask = List.generate(size, (_) => List.filled(size, false));
 
-    // 创建遮罩
-    mask = List.generate(
-        radius * 2, (_) => List.generate(radius * 2, (_) => false));
+    // 计算地形概率边界，避免重复计算
+    double forestProb = tileProbs['FOREST']!;
+    double fieldProb = forestProb + tileProbs['FIELD']!;
 
-    // 生成地形
-    for (int y = 0; y < radius * 2; y++) {
-      for (int x = 0; x < radius * 2; x++) {
+    // 生成地形 - 使用更高效的迭代方式
+    for (int y = 0; y < size; y++) {
+      for (int x = 0; x < size; x++) {
+        // 村庄位置特殊处理
         if (x == villagePos[0] && y == villagePos[1]) {
           map[y][x] = tile['VILLAGE']!;
-        } else {
-          double r = random.nextDouble();
-          if (r < tileProbs['FOREST']!) {
-            map[y][x] = tile['FOREST']!;
-          } else if (r < tileProbs['FOREST']! + tileProbs['FIELD']!) {
-            map[y][x] = tile['FIELD']!;
-          } else {
-            map[y][x] = tile['BARRENS']!;
-          }
+          continue;
         }
+
+        // 其他地形随机生成
+        double r = random.nextDouble();
+        if (r < forestProb) {
+          map[y][x] = tile['FOREST']!;
+        } else if (r < fieldProb) {
+          map[y][x] = tile['FIELD']!;
+        }
+        // else 默认已经是 BARRENS
       }
     }
 
-    // 放置地标
+    // 初始化地标对象数组
+    landmarkObjects = [];
+
+    // 放置地标 - 批量处理相似地标
     landmarks.forEach((key, landmark) {
-      for (int i = 0; i < landmark['num']; i++) {
-        placeLandmark(landmark['minRadius'], landmark['maxRadius'], tile[key]!);
+      int count = landmark['num'];
+      int minR = landmark['minRadius'];
+      int maxR = landmark['maxRadius'];
+      String tileType = tile[key]!;
+
+      for (int i = 0; i < count; i++) {
+        placeLandmark(minR, maxR, tileType);
       }
     });
 
@@ -398,21 +409,27 @@ class WorldSystem extends ChangeNotifier {
     return null;
   }
 
-  // 更新可见性遮罩
+  // 更新可见性遮罩 - 优化版本
   void updateMask() {
     int x = position[0];
     int y = position[1];
 
-    // 更新可见范围
-    for (int i = -lightRadius; i <= lightRadius; i++) {
-      for (int j = -lightRadius; j <= lightRadius; j++) {
-        if (x + i >= 0 &&
-            x + i < radius * 2 &&
-            y + j >= 0 &&
-            y + j < radius * 2) {
-          if (sqrt(i * i + j * j) <= lightRadius) {
-            mask[y + j][x + i] = true;
-          }
+    // 计算可见范围边界，避免在循环中多次计算边界条件
+    int minX = max(0, x - lightRadius);
+    int maxX = min(radius * 2 - 1, x + lightRadius);
+    int minY = max(0, y - lightRadius);
+    int maxY = min(radius * 2 - 1, y + lightRadius);
+
+    // 预先计算半径的平方，避免在循环中多次计算
+    int radiusSquared = lightRadius * lightRadius;
+
+    // 使用带边界检查的直接更新
+    for (int j = minY; j <= maxY; j++) {
+      for (int i = minX; i <= maxX; i++) {
+        int dx = i - x;
+        int dy = j - y;
+        if (dx * dx + dy * dy <= radiusSquared) {
+          mask[j][i] = true;
         }
       }
     }
