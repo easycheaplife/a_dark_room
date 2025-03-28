@@ -4,12 +4,19 @@ import 'game_state.dart';
 import 'path_system.dart';
 
 class WorldSystem extends ChangeNotifier {
+  // 日志工具方法，只在调试模式下打印
+  void _log(String message) {
+    if (kDebugMode) {
+      print(message);
+    }
+  }
+
   // 世界常量
-  static const int RADIUS = 30;
-  static const List<int> VILLAGE_POS = [30, 30];
+  static const int radius = 30;
+  static const List<int> villagePos = [30, 30];
 
   // 地图图块定义
-  static const Map<String, String> TILE = {
+  static const Map<String, String> tile = {
     'VILLAGE': 'A',
     'IRON_MINE': 'I',
     'COAL_MINE': 'C',
@@ -32,14 +39,14 @@ class WorldSystem extends ChangeNotifier {
   };
 
   // 地块生成概率
-  static const Map<String, double> TILE_PROBS = {
+  static const Map<String, double> tileProbs = {
     'FOREST': 0.15,
     'FIELD': 0.35,
     'BARRENS': 0.5
   };
 
   // 地标定义
-  static final Map<String, Map<String, dynamic>> LANDMARKS = {
+  static final Map<String, Map<String, dynamic>> landmarks = {
     'OUTPOST': {
       'num': 0,
       'minRadius': 0,
@@ -71,7 +78,7 @@ class WorldSystem extends ChangeNotifier {
     'HOUSE': {
       'num': 10,
       'minRadius': 0,
-      'maxRadius': RADIUS * 1.5,
+      'maxRadius': radius * 1.5,
       'scene': 'house',
       'label': '一座老房子'
     },
@@ -92,7 +99,7 @@ class WorldSystem extends ChangeNotifier {
     'CITY': {
       'num': 20,
       'minRadius': 20,
-      'maxRadius': RADIUS * 1.5,
+      'maxRadius': radius * 1.5,
       'scene': 'city',
       'label': '被毁的城市'
     },
@@ -106,21 +113,21 @@ class WorldSystem extends ChangeNotifier {
     'BOREHOLE': {
       'num': 10,
       'minRadius': 15,
-      'maxRadius': RADIUS * 1.5,
+      'maxRadius': radius * 1.5,
       'scene': 'borehole',
       'label': '钻孔'
     },
     'BATTLEFIELD': {
       'num': 5,
       'minRadius': 18,
-      'maxRadius': RADIUS * 1.5,
+      'maxRadius': radius * 1.5,
       'scene': 'battlefield',
       'label': '战场'
     },
     'SWAMP': {
       'num': 1,
       'minRadius': 15,
-      'maxRadius': RADIUS * 1.5,
+      'maxRadius': radius * 1.5,
       'scene': 'swamp',
       'label': '浑浊的沼泽'
     },
@@ -134,28 +141,28 @@ class WorldSystem extends ChangeNotifier {
   };
 
   // 游戏相关常量
-  static const double STICKINESS = 0.5; // 0 <= x <= 1
-  static const int LIGHT_RADIUS = 5; // 增加可见范围
-  static const int BASE_WATER = 20; // 增加基础水量以便更好测试
-  static const int MOVES_PER_FOOD = 3; // 增加移动步数，减少食物消耗
-  static const int MOVES_PER_WATER = 2; // 增加移动步数，减少水消耗
-  static const int DEATH_COOLDOWN = 120;
-  static const double FIGHT_CHANCE = 0.20;
-  static const int BASE_HEALTH = 10;
-  static const double BASE_HIT_CHANCE = 0.8;
-  static const int MEAT_HEAL = 8;
-  static const int MEDS_HEAL = 20;
-  static const int HYPO_HEAL = 30;
-  static const int FIGHT_DELAY = 3; // 战斗之间至少三步
+  static const double stickiness = 0.5; // 0 <= x <= 1
+  static const int lightRadius = 5; // 增加可见范围
+  static const int baseWater = 20; // 增加基础水量以便更好测试
+  static const int movesPerFood = 3; // 增加移动步数，减少食物消耗
+  static const int movesPerWater = 2; // 增加移动步数，减少水消耗
+  static const int deathCooldown = 120;
+  static const double fightChance = 0.20;
+  static const int baseHealth = 10;
+  static const double baseHitChance = 0.8;
+  static const int meatHeal = 8;
+  static const int medsHeal = 20;
+  static const int hypoHeal = 30;
+  static const int fightDelay = 3; // 战斗之间至少三步
 
   // 方向定义
-  static const List<int> NORTH = [0, -1];
-  static const List<int> SOUTH = [0, 1];
-  static const List<int> WEST = [-1, 0];
-  static const List<int> EAST = [1, 0];
+  static const List<int> north = [0, -1];
+  static const List<int> south = [0, 1];
+  static const List<int> west = [-1, 0];
+  static const List<int> east = [1, 0];
 
   // 武器定义
-  static const Map<String, Map<String, dynamic>> WEAPONS = {
+  static const Map<String, Map<String, dynamic>> weapons = {
     'fists': {'verb': '拳击', 'type': 'unarmed', 'damage': 1, 'cooldown': 2},
     'bone spear': {'verb': '刺击', 'type': 'melee', 'damage': 2, 'cooldown': 2},
     'iron sword': {'verb': '挥砍', 'type': 'melee', 'damage': 4, 'cooldown': 2},
@@ -213,21 +220,21 @@ class WorldSystem extends ChangeNotifier {
   // 地图数据
   List<List<String>> map = [];
   List<List<bool>> mask = [];
-  List<List<int>> landmarks = [];
+  List<List<int>> landmarkObjects = [];
 
   // 玩家位置
-  List<int> position = [VILLAGE_POS[0], VILLAGE_POS[1]];
-  List<int> lastPosition = [VILLAGE_POS[0], VILLAGE_POS[1]];
+  List<int> position = [villagePos[0], villagePos[1]];
+  List<int> lastPosition = [villagePos[0], villagePos[1]];
 
   // 资源和状态
-  int water = BASE_WATER;
+  int water = baseWater;
   int moves = 0;
   int food = 0;
   int totalMoveCount = 0;
   bool fightAvailable = false;
   int fightTimer = 0;
   bool isDead = false;
-  int deathTimer = DEATH_COOLDOWN;
+  int deathTimer = deathCooldown;
 
   // 特殊位置
   List<int>? shipLocation;
@@ -235,31 +242,31 @@ class WorldSystem extends ChangeNotifier {
   // 初始化世界
   void init() {
     if (kDebugMode) {
-      print('开始初始化世界地图系统');
+      _log('开始初始化世界地图系统');
     }
 
     try {
       if (map.isEmpty) {
         if (kDebugMode) {
-          print('地图为空，开始生成地图');
+          _log('地图为空，开始生成地图');
         }
         generateMap();
       } else {
         if (kDebugMode) {
-          print('地图已存在，大小: ${map.length}x${map[0].length}');
+          _log('地图已存在，大小: ${map.length}x${map[0].length}');
         }
       }
 
       // 确保玩家位置正确设置
       if (position.isEmpty) {
-        position = [VILLAGE_POS[0], VILLAGE_POS[1]];
+        position = [villagePos[0], villagePos[1]];
         lastPosition = List.from(position); // 初始化上一个位置
         if (kDebugMode) {
-          print('玩家位置未设置，设置默认位置：$position');
+          _log('玩家位置未设置，设置默认位置：$position');
         }
       } else {
         if (kDebugMode) {
-          print('玩家当前位置：$position');
+          _log('玩家当前位置：$position');
         }
       }
 
@@ -267,7 +274,7 @@ class WorldSystem extends ChangeNotifier {
       if (lastPosition.isEmpty) {
         lastPosition = List.from(position);
         if (kDebugMode) {
-          print('上一个位置未设置，设置为当前位置：$lastPosition');
+          _log('上一个位置未设置，设置为当前位置：$lastPosition');
         }
       }
 
@@ -275,22 +282,22 @@ class WorldSystem extends ChangeNotifier {
       if (mask.isEmpty) {
         updateMask();
         if (kDebugMode) {
-          print('重新生成可见性掩码');
+          _log('重新生成可见性掩码');
         }
       }
 
       // 确保水资源已初始化
       if (water <= 0) {
-        water = BASE_WATER;
+        water = baseWater;
         if (kDebugMode) {
-          print('重置水资源为默认值: $water');
+          _log('重置水资源为默认值: $water');
         }
       }
 
       notifyListeners();
     } catch (e) {
       if (kDebugMode) {
-        print('世界地图初始化出错: $e');
+        _log('世界地图初始化出错: $e');
       }
       // 尝试恢复到初始状态
       resetWorld();
@@ -301,10 +308,10 @@ class WorldSystem extends ChangeNotifier {
   void resetWorld() {
     map = [];
     mask = [];
-    position = [VILLAGE_POS[0], VILLAGE_POS[1]];
+    position = [villagePos[0], villagePos[1]];
     lastPosition = List.from(position);
-    landmarks = [];
-    water = BASE_WATER;
+    landmarkObjects = [];
+    water = baseWater;
     moves = 0;
     food = 0;
     generateMap();
@@ -317,43 +324,43 @@ class WorldSystem extends ChangeNotifier {
 
     // 创建空白地图
     map = List.generate(
-        RADIUS * 2, (_) => List.generate(RADIUS * 2, (_) => TILE['BARRENS']!));
+        radius * 2, (_) => List.generate(radius * 2, (_) => tile['BARRENS']!));
 
     // 创建遮罩
     mask = List.generate(
-        RADIUS * 2, (_) => List.generate(RADIUS * 2, (_) => false));
+        radius * 2, (_) => List.generate(radius * 2, (_) => false));
 
     // 生成地形
-    for (int y = 0; y < RADIUS * 2; y++) {
-      for (int x = 0; x < RADIUS * 2; x++) {
-        if (x == VILLAGE_POS[0] && y == VILLAGE_POS[1]) {
-          map[y][x] = TILE['VILLAGE']!;
+    for (int y = 0; y < radius * 2; y++) {
+      for (int x = 0; x < radius * 2; x++) {
+        if (x == villagePos[0] && y == villagePos[1]) {
+          map[y][x] = tile['VILLAGE']!;
         } else {
           double r = random.nextDouble();
-          if (r < TILE_PROBS['FOREST']!) {
-            map[y][x] = TILE['FOREST']!;
-          } else if (r < TILE_PROBS['FOREST']! + TILE_PROBS['FIELD']!) {
-            map[y][x] = TILE['FIELD']!;
+          if (r < tileProbs['FOREST']!) {
+            map[y][x] = tile['FOREST']!;
+          } else if (r < tileProbs['FOREST']! + tileProbs['FIELD']!) {
+            map[y][x] = tile['FIELD']!;
           } else {
-            map[y][x] = TILE['BARRENS']!;
+            map[y][x] = tile['BARRENS']!;
           }
         }
       }
     }
 
     // 放置地标
-    LANDMARKS.forEach((key, landmark) {
+    landmarks.forEach((key, landmark) {
       for (int i = 0; i < landmark['num']; i++) {
-        placeLandmark(landmark['minRadius'], landmark['maxRadius'], TILE[key]!);
+        placeLandmark(landmark['minRadius'], landmark['maxRadius'], tile[key]!);
       }
     });
 
     // 找到飞船位置
-    shipLocation = findLocationOnMap(TILE['SHIP']!);
+    shipLocation = findLocationOnMap(tile['SHIP']!);
   }
 
   // 放置地标
-  void placeLandmark(int minRadius, int maxRadius, String tile) {
+  void placeLandmark(int minRadius, int maxRadius, String tileType) {
     Random random = Random();
     int x, y;
     double r;
@@ -364,15 +371,15 @@ class WorldSystem extends ChangeNotifier {
       r = minRadius + random.nextDouble() * (maxRadius - minRadius);
       double angle = random.nextDouble() * 2 * pi;
 
-      x = (VILLAGE_POS[0] + r * cos(angle)).round();
-      y = (VILLAGE_POS[1] + r * sin(angle)).round();
+      x = (villagePos[0] + r * cos(angle)).round();
+      y = (villagePos[1] + r * sin(angle)).round();
 
-      if (x >= 0 && x < RADIUS * 2 && y >= 0 && y < RADIUS * 2) {
-        if (map[y][x] != TILE['VILLAGE'] &&
-            map[y][x] != TILE['IRON_MINE'] &&
-            map[y][x] != TILE['COAL_MINE'] &&
-            map[y][x] != TILE['SULPHUR_MINE']) {
-          map[y][x] = tile;
+      if (x >= 0 && x < radius * 2 && y >= 0 && y < radius * 2) {
+        if (map[y][x] != tile['VILLAGE'] &&
+            map[y][x] != tile['IRON_MINE'] &&
+            map[y][x] != tile['COAL_MINE'] &&
+            map[y][x] != tile['SULPHUR_MINE']) {
+          map[y][x] = tileType;
           validLocation = true;
         }
       }
@@ -397,13 +404,13 @@ class WorldSystem extends ChangeNotifier {
     int y = position[1];
 
     // 更新可见范围
-    for (int i = -LIGHT_RADIUS; i <= LIGHT_RADIUS; i++) {
-      for (int j = -LIGHT_RADIUS; j <= LIGHT_RADIUS; j++) {
+    for (int i = -lightRadius; i <= lightRadius; i++) {
+      for (int j = -lightRadius; j <= lightRadius; j++) {
         if (x + i >= 0 &&
-            x + i < RADIUS * 2 &&
+            x + i < radius * 2 &&
             y + j >= 0 &&
-            y + j < RADIUS * 2) {
-          if (sqrt(i * i + j * j) <= LIGHT_RADIUS) {
+            y + j < radius * 2) {
+          if (sqrt(i * i + j * j) <= lightRadius) {
             mask[y + j][x + i] = true;
           }
         }
@@ -414,21 +421,21 @@ class WorldSystem extends ChangeNotifier {
   /// 移动，根据方向移动位置
   bool move(String direction, PathSystem pathSystem, GameState gameState) {
     if (kDebugMode) {
-      print('移动尝试: 方向=$direction, 当前位置=$position, 水量=$water');
-      print('背包内容: ${pathSystem.outfit}');
+      _log('移动尝试: 方向=$direction, 当前位置=$position, 水量=$water');
+      _log('背包内容: ${pathSystem.outfit}');
     }
 
     // 检查水和食物
     if (water <= 0) {
       if (kDebugMode) {
-        print('移动失败: 水不足');
+        _log('移动失败: 水不足');
       }
       return false;
     }
 
     if (!pathSystem.hasFood()) {
       if (kDebugMode) {
-        print('移动失败: 食物不足');
+        _log('移动失败: 食物不足');
       }
       return false;
     }
@@ -450,18 +457,18 @@ class WorldSystem extends ChangeNotifier {
         break;
       default:
         if (kDebugMode) {
-          print('移动失败: 无效方向');
+          _log('移动失败: 无效方向');
         }
         return false;
     }
 
     // 边界检查
     if (newPos[0] < 0 ||
-        newPos[0] >= RADIUS * 2 ||
+        newPos[0] >= radius * 2 ||
         newPos[1] < 0 ||
-        newPos[1] >= RADIUS * 2) {
+        newPos[1] >= radius * 2) {
       if (kDebugMode) {
-        print('移动失败: 边界检查失败 - 新位置($newPos)超出地图边界');
+        _log('移动失败: 边界检查失败 - 新位置($newPos)超出地图边界');
       }
       return false;
     }
@@ -472,10 +479,10 @@ class WorldSystem extends ChangeNotifier {
     // 移动计数和食物消耗
     moves++;
     totalMoveCount++; // 增加总移动计数
-    if (moves >= MOVES_PER_FOOD) {
+    if (moves >= movesPerFood) {
       if (!pathSystem.consumeFood()) {
         if (kDebugMode) {
-          print('移动失败: 食物消耗失败');
+          _log('移动失败: 食物消耗失败');
         }
         return false;
       }
@@ -495,10 +502,10 @@ class WorldSystem extends ChangeNotifier {
     String lastTile = map[lastPosition[1]][lastPosition[0]];
 
     if (kDebugMode) {
-      print(
+      _log(
           '移动成功: 新位置=$position ($currentTile), 上一位置=$lastPosition ($lastTile)');
-      print('剩余水量=$water, 移动步数=$moves, 总移动次数=$totalMoveCount');
-      print('游戏当前状态=${gameState.currentLocation}');
+      _log('剩余水量=$water, 移动步数=$moves, 总移动次数=$totalMoveCount');
+      _log('游戏当前状态=${gameState.currentLocation}');
     }
 
     // 检查地点事件
@@ -512,16 +519,16 @@ class WorldSystem extends ChangeNotifier {
   void checkLocationEvents(GameState gameState) {
     // 用于总移动次数追踪
     if (kDebugMode) {
-      print('=== 检查位置事件 ===');
-      print('当前位置: $position, 地块类型: ${map[position[1]][position[0]]}');
-      print(
+      _log('=== 检查位置事件 ===');
+      _log('当前位置: $position, 地块类型: ${map[position[1]][position[0]]}');
+      _log(
           '上一位置: $lastPosition, 地块类型: ${lastPosition.isNotEmpty ? map[lastPosition[1]][lastPosition[0]] : ''}');
-      print('游戏当前状态: ${gameState.currentLocation}');
-      print('已移动步数: $moves, 水量: $water');
+      _log('游戏当前状态: ${gameState.currentLocation}');
+      _log('已移动步数: $moves, 水量: $water');
 
       // 添加简单的步数计数，用于调试多次移动的问题
       totalMoveCount++;
-      print('总移动次数: $totalMoveCount');
+      _log('总移动次数: $totalMoveCount');
     }
 
     // 检查是否刚进入村庄
@@ -531,12 +538,12 @@ class WorldSystem extends ChangeNotifier {
     String lastTile =
         lastPosition.isNotEmpty ? map[lastPosition[1]][lastPosition[0]] : '';
 
-    if (currentTile == TILE['VILLAGE']) {
+    if (currentTile == tile['VILLAGE']) {
       // 只有当从外部回到村庄时才切换回房间
       // 如果上一个位置不是村庄，则触发返回房间
-      if (lastTile != TILE['VILLAGE'] && lastTile.isNotEmpty) {
+      if (lastTile != tile['VILLAGE'] && lastTile.isNotEmpty) {
         if (kDebugMode) {
-          print('从外部进入村庄，返回房间');
+          _log('从外部进入村庄，返回房间');
         }
         // 延迟切换位置，避免状态更新冲突
         Future.delayed(Duration.zero, () {
@@ -547,80 +554,84 @@ class WorldSystem extends ChangeNotifier {
         });
       } else {
         if (kDebugMode) {
-          print('在村庄内移动，不返回房间');
+          _log('在村庄内移动，不返回房间');
         }
       }
-    } else if (currentTile == TILE['IRON_MINE']) {
+    } else if (currentTile == tile['IRON_MINE']) {
       // 处理铁矿事件
       gameState.currentLocation = 'ironMine';
-    } else if (currentTile == TILE['COAL_MINE']) {
+    } else if (currentTile == tile['COAL_MINE']) {
       // 处理煤矿事件
       gameState.currentLocation = 'coalMine';
-    } else if (currentTile == TILE['FOREST']) {
+    } else if (currentTile == tile['FOREST']) {
       // 处理森林事件
       gameState.currentLocation = 'forest';
-    } else if (currentTile == TILE['SULPHUR_MINE']) {
+    } else if (currentTile == tile['SULPHUR_MINE']) {
       // 处理硫磺矿事件
       gameState.currentLocation = 'sulphurMine';
-    } else if (currentTile == TILE['HOUSE']) {
+    } else if (currentTile == tile['HOUSE']) {
       // 处理房子事件
       gameState.currentLocation = 'house';
-    } else if (currentTile == TILE['CAVE']) {
+    } else if (currentTile == tile['CAVE']) {
       // 处理洞穴事件
       gameState.currentLocation = 'cave';
-    } else if (currentTile == TILE['TOWN']) {
+    } else if (currentTile == tile['TOWN']) {
       // 处理小镇事件
       gameState.currentLocation = 'town';
-    } else if (currentTile == TILE['CITY']) {
+    } else if (currentTile == tile['CITY']) {
       // 处理城市事件
       gameState.currentLocation = 'city';
-    } else if (currentTile == TILE['OUTPOST']) {
+    } else if (currentTile == tile['OUTPOST']) {
       // 处理前哨站事件
       gameState.currentLocation = 'outpost';
-    } else if (currentTile == TILE['SHIP']) {
+    } else if (currentTile == tile['SHIP']) {
       // 处理星舰事件
       gameState.currentLocation = 'ship';
-    } else if (currentTile == TILE['BOREHOLE']) {
+    } else if (currentTile == tile['BOREHOLE']) {
       // 处理钻孔事件
       gameState.currentLocation = 'borehole';
-    } else if (currentTile == TILE['BATTLEFIELD']) {
+    } else if (currentTile == tile['BATTLEFIELD']) {
       // 处理战场事件
       gameState.currentLocation = 'battlefield';
-    } else if (currentTile == TILE['SWAMP']) {
+    } else if (currentTile == tile['SWAMP']) {
       // 处理沼泽事件
       gameState.currentLocation = 'swamp';
-    } else if (currentTile == TILE['EXECUTIONER']) {
+    } else if (currentTile == tile['EXECUTIONER']) {
       // 处理被摧毁的战舰事件
       gameState.currentLocation = 'executioner';
     }
 
     // 处理遇到的地点
-    if (LANDMARKS.entries.any((entry) => TILE[entry.key] == currentTile)) {
-      // 找到对应地标
-      var landmark = LANDMARKS.entries.firstWhere(
-        (entry) => TILE[entry.key] == currentTile,
-        orElse: () => MapEntry('BARRENS', LANDMARKS['BARRENS']!),
-      );
+    // 查找与当前地块匹配的地标
+    String? landmarkKey;
+    for (var entry in landmarks.entries) {
+      if (tile[entry.key] == currentTile) {
+        landmarkKey = entry.key;
+        break;
+      }
+    }
 
+    if (landmarkKey != null) {
       // 标记为发现
-      if (!gameState.world['discovered_locations'].contains(landmark.key)) {
-        gameState.world['discovered_locations'].add(landmark.key);
+      if (!gameState.world['discovered_locations'].contains(landmarkKey)) {
+        gameState.world['discovered_locations'].add(landmarkKey);
       }
 
       // 保存位置信息
-      gameState.world['location_info'][landmark.key] = {
+      var landmark = landmarks[landmarkKey]!;
+      gameState.world['location_info'][landmarkKey] = {
         'x': position[0],
         'y': position[1],
-        'label': landmark.value['label'],
-        'scene': landmark.value['scene'],
+        'label': landmark['label'],
+        'scene': landmark['scene'],
       };
     }
 
     // 随机战斗检查
-    if (fightTimer <= 0 && Random().nextDouble() < FIGHT_CHANCE) {
+    if (fightTimer <= 0 && Random().nextDouble() < fightChance) {
       // 触发战斗
       // 这里简单标记，实际实现需要连接到战斗系统
-      fightTimer = FIGHT_DELAY;
+      fightTimer = fightDelay;
     }
 
     // 更新状态
@@ -666,7 +677,7 @@ class WorldSystem extends ChangeNotifier {
       List<dynamic> pos = json['position'];
       position = [pos[0], pos[1]];
     } else {
-      position = [VILLAGE_POS[0], VILLAGE_POS[1]];
+      position = [villagePos[0], villagePos[1]];
     }
 
     // 加载上一个位置
@@ -683,11 +694,11 @@ class WorldSystem extends ChangeNotifier {
       List<dynamic> ship = json['shipLocation'];
       shipLocation = [ship[0], ship[1]];
     } else {
-      shipLocation = findLocationOnMap(TILE['SHIP']!);
+      shipLocation = findLocationOnMap(tile['SHIP']!);
     }
 
     // 加载资源
-    water = json['water'] ?? BASE_WATER;
+    water = json['water'] ?? baseWater;
     food = json['food'] ?? 0;
     moves = json['moves'] ?? 0;
 

@@ -1318,7 +1318,7 @@ class _RoomScreenState extends State<RoomScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${GameSettings.languageManager.get('save_directory', category: 'save')}: ${GameState.SAVE_DIRECTORY}',
+                    '${GameSettings.languageManager.get('save_directory', category: 'save')}: ${GameState.saveDirectory}',
                     style: const TextStyle(color: Colors.white),
                   ),
                   const SizedBox(height: 8),

@@ -66,8 +66,8 @@ class _WorldScreenState extends State<WorldScreen> {
         print('玩家位置未设置，设置默认位置');
       }
       widget.worldSystem.position = [
-        WorldSystem.VILLAGE_POS[0],
-        WorldSystem.VILLAGE_POS[1]
+        WorldSystem.villagePos[0],
+        WorldSystem.villagePos[1]
       ];
     }
 
@@ -381,7 +381,7 @@ class _WorldScreenState extends State<WorldScreen> {
     BorderRadius? borderRadius;
 
     // 村庄特殊标记
-    if (tile == WorldSystem.TILE['VILLAGE']) {
+    if (tile == WorldSystem.tile['VILLAGE']) {
       borderRadius = BorderRadius.circular(cellSize / 2);
     }
 
@@ -472,14 +472,10 @@ class _WorldScreenState extends State<WorldScreen> {
 
   // 补充资源方法
   void _refillResources() {
-    // 补充水资源
-    widget.worldSystem.water = WorldSystem.BASE_WATER;
-
-    // 补充食物
-    if (!widget.pathSystem.outfit.containsKey('cured meat') ||
-        widget.pathSystem.outfit['cured meat']! < 5) {
-      widget.pathSystem.outfit['cured meat'] = 10;
-    }
+    // 重置资源
+    widget.worldSystem.water = WorldSystem.baseWater;
+    widget.pathSystem.increaseSupply('cured meat');
+    widget.pathSystem.increaseSupply('cured meat');
 
     // 更新状态
     _validateWorldState();
@@ -493,8 +489,8 @@ class _WorldScreenState extends State<WorldScreen> {
   // 重置位置方法
   void _resetPosition() {
     widget.worldSystem.position = [
-      WorldSystem.VILLAGE_POS[0],
-      WorldSystem.VILLAGE_POS[1]
+      WorldSystem.villagePos[0],
+      WorldSystem.villagePos[1]
     ];
     widget.worldSystem.lastPosition = List.from(widget.worldSystem.position);
     widget.worldSystem.updateMask();

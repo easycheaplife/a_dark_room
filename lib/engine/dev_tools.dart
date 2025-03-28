@@ -232,14 +232,14 @@ class DevTools {
     gameState.worldSystem.resetWorld();
 
     // 确保水资源充足
-    gameState.worldSystem.water = WorldSystem.BASE_WATER;
+    gameState.worldSystem.water = WorldSystem.baseWater;
     gameState.worldSystem.moves = 0;
     gameState.worldSystem.totalMoveCount = 0;
 
     // 确保位置正确设置在村庄位置
     gameState.worldSystem.position = [
-      WorldSystem.VILLAGE_POS[0],
-      WorldSystem.VILLAGE_POS[1]
+      WorldSystem.villagePos[0],
+      WorldSystem.villagePos[1]
     ];
     gameState.worldSystem.lastPosition =
         List.from(gameState.worldSystem.position);
