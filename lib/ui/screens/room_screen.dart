@@ -104,27 +104,17 @@ class _RoomScreenState extends State<RoomScreen> {
       int currentFire = widget.gameState.room['fire'] as int;
       if (currentFire < 3) {
         widget.gameState.room['fire'] = currentFire + 1;
-
-        // 更新温度
-        if (currentFire == 1) {
-          widget.gameState.room['temperature'] = 'warm';
-          _addLog(GameSettings.languageManager
-              .get('fire_burns_brighter', category: 'room'));
-        } else if (currentFire == 2) {
-          widget.gameState.room['temperature'] = 'hot';
-          _addLog(GameSettings.languageManager
-              .get('fire_roaring', category: 'room'));
-        }
-
-        // 强制更新状态
-        setState(() {
-          _fireLevel = widget.gameState.room['fire'] as int;
-          _temperature = widget.gameState.room['temperature'] as String;
-        });
-      } else {
-        _addLog(GameSettings.languageManager
-            .get('fire_max_level', category: 'room'));
       }
+
+      if (currentFire == 1) {
+        _addLog(GameSettings.languageManager
+            .get('fire_burns_brighter', category: 'room'));
+      } else if (currentFire == 2) {
+        _addLog(
+            GameSettings.languageManager.get('fire_roaring', category: 'room'));
+        widget.gameState.room['temperature'] = 'hot';
+      }
+      setState(() {}); // Update UI
     } else {
       _addLog(GameSettings.languageManager.get('no_wood', category: 'room'));
     }
@@ -332,26 +322,30 @@ class _RoomScreenState extends State<RoomScreen> {
                   _explorePathAction();
                   break;
                 case 'path':
-                  DevTools.quickJumpToPath(widget.gameState);
+                  if (kDebugMode) DevTools.quickJumpToPath(widget.gameState);
                   break;
                 case 'world':
-                  DevTools.quickJumpToWorld(widget.gameState);
+                  if (kDebugMode) DevTools.quickJumpToWorld(widget.gameState);
                   break;
                 case 'resources':
-                  DevTools.addUnlimitedResources(widget.gameState);
-                  _showMessage(GameSettings.languageManager
-                      .get('resources_added', category: 'menu'));
+                  if (kDebugMode) {
+                    DevTools.addUnlimitedResources(widget.gameState);
+                    _showMessage(GameSettings.languageManager
+                        .get('resources_added', category: 'menu'));
+                  }
                   break;
                 case 'unlock':
-                  DevTools.unlockAllFeatures(widget.gameState);
-                  _showMessage(GameSettings.languageManager
-                      .get('all_unlocked', category: 'menu'));
+                  if (kDebugMode) {
+                    DevTools.unlockAllFeatures(widget.gameState);
+                    _showMessage(GameSettings.languageManager
+                        .get('all_unlocked', category: 'menu'));
+                  }
                   break;
                 case 'story_event':
-                  _triggerStoryEventTest();
+                  if (kDebugMode) _triggerStoryEventTest();
                   break;
                 case 'progress_event':
-                  _triggerProgressEventTest();
+                  if (kDebugMode) _triggerProgressEventTest();
                   break;
               }
             },
@@ -379,7 +373,7 @@ class _RoomScreenState extends State<RoomScreen> {
               }
 
               // 只在开发模式下添加开发者功能
-              if (kDebugMode || GameSettings.devMode) {
+              if (kDebugMode) {
                 if (items.isNotEmpty) {
                   items.add(const PopupMenuDivider());
                 }
@@ -1788,23 +1782,15 @@ class _RoomScreenState extends State<RoomScreen> {
   // 探索路径的动作
   void _explorePathAction() {
     try {
-      // 清空并添加基础物资到背包
-      widget.gameState.pathSystem.clearOutfit();
-      widget.gameState.pathSystem.increaseSupply('cured meat');
-      widget.gameState.pathSystem.increaseSupply('cured meat');
-      widget.gameState.pathSystem.increaseSupply('cured meat');
-      widget.gameState.pathSystem.increaseSupply('water');
-      widget.gameState.pathSystem.increaseSupply('water');
-      widget.gameState.pathSystem.increaseSupply('torch');
+      // 直接设置路径系统的装备，避免多次调用
+      widget.gameState.pathSystem.outfit = {
+        'cured meat': 3,
+        'water': 2,
+        'torch': 1
+      };
 
       // 切换到路径界面
       widget.gameState.currentLocation = 'path';
-      setState(() {}); // Update UI instead of notifyListeners
-
-      if (kDebugMode) {
-        print('已进入探索路径');
-        print('路径系统状态: 已初始化');
-      }
     } catch (e) {
       _showMessage(
           GameSettings.languageManager.get('path_error', category: 'menu'));

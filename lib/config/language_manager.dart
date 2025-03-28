@@ -70,7 +70,6 @@ class LanguageManager extends ChangeNotifier {
         'no_fire_pit': 'There is no fire.',
         'fire_burns_brighter': 'The fire burns brighter.',
         'no_wood': 'No wood.',
-        'fire_max_level': 'Fire has reached maximum level.',
       },
       'actions': {
         'light_fire': 'Light Fire',
@@ -357,7 +356,6 @@ class LanguageManager extends ChangeNotifier {
         'no_fire_pit': '没有火堆。',
         'fire_burns_brighter': '火堆燃烧更旺了。',
         'no_wood': '没有木头。',
-        'fire_max_level': '火堆已达到最大等级。',
       },
       'actions': {
         'light_fire': '生火',
