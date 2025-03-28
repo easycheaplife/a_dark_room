@@ -5,8 +5,8 @@ import '../config/game_settings.dart';
 
 class CraftingRecipe {
   final String id;
-  final String name;
-  final String description;
+  String name;
+  String description;
   final Map<String, int> ingredients;
   final Map<String, int> outputs;
   final int craftingTime;
@@ -46,6 +46,16 @@ class CraftingSystem {
   // 添加制作进度追踪
   Map<String, DateTime> _activeCrafting = {};
   Map<String, Timer> _craftingTimers = {};
+
+  // 更新所有配方的翻译
+  void updateAllRecipeTranslations() {
+    recipes.forEach((id, recipe) {
+      // 更新配方名称和描述为当前语言版本
+      recipe.name = GameSettings.languageManager.get(id, category: 'recipes');
+      recipe.description =
+          GameSettings.languageManager.get('${id}_desc', category: 'recipes');
+    });
+  }
 
   // 检查是否可以制作
   bool canCraft(CraftingRecipe recipe, GameState state) {

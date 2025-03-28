@@ -392,6 +392,12 @@ class GameState extends ChangeNotifier {
     // 初始化路径系统
     pathSystem = PathSystem();
 
+    // 监听语言变化
+    GameSettings.languageManager.addListener(_onLanguageChanged);
+
+    // 初次运行时更新配方翻译
+    craftingSystem.updateAllRecipeTranslations();
+
     // ... 其他初始化代码 ...
   }
 
@@ -477,6 +483,10 @@ class GameState extends ChangeNotifier {
     huntingTimer?.cancel();
     _waterTimer?.cancel();
     _autoSaveTimer?.cancel(); // 添加自动存档定时器的清理
+
+    // 移除语言变化监听器
+    GameSettings.languageManager.removeListener(_onLanguageChanged);
+
     combatSystem.dispose();
     super.dispose();
   }
@@ -1435,5 +1445,13 @@ class GameState extends ChangeNotifier {
     }
 
     return true;
+  }
+
+  // 语言变化响应
+  void _onLanguageChanged() {
+    // 更新所有配方的翻译
+    craftingSystem.updateAllRecipeTranslations();
+    // 通知监听器更新UI
+    notifyListeners();
   }
 }
