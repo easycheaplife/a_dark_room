@@ -104,17 +104,27 @@ class _RoomScreenState extends State<RoomScreen> {
       int currentFire = widget.gameState.room['fire'] as int;
       if (currentFire < 3) {
         widget.gameState.room['fire'] = currentFire + 1;
-      }
 
-      if (currentFire == 1) {
+        // 更新温度
+        if (currentFire == 1) {
+          widget.gameState.room['temperature'] = 'warm';
+          _addLog(GameSettings.languageManager
+              .get('fire_burns_brighter', category: 'room'));
+        } else if (currentFire == 2) {
+          widget.gameState.room['temperature'] = 'hot';
+          _addLog(GameSettings.languageManager
+              .get('fire_roaring', category: 'room'));
+        }
+
+        // 强制更新状态
+        setState(() {
+          _fireLevel = widget.gameState.room['fire'] as int;
+          _temperature = widget.gameState.room['temperature'] as String;
+        });
+      } else {
         _addLog(GameSettings.languageManager
-            .get('fire_burns_brighter', category: 'room'));
-      } else if (currentFire == 2) {
-        _addLog(
-            GameSettings.languageManager.get('fire_roaring', category: 'room'));
-        widget.gameState.room['temperature'] = 'hot';
+            .get('fire_max_level', category: 'room'));
       }
-      setState(() {}); // Update UI
     } else {
       _addLog(GameSettings.languageManager.get('no_wood', category: 'room'));
     }
@@ -345,57 +355,68 @@ class _RoomScreenState extends State<RoomScreen> {
                   break;
               }
             },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              // 游戏功能
-              if (widget.gameState.outsideUnlocked)
-                PopupMenuItem<String>(
-                  value: 'outside',
-                  child: Text(GameSettings.languageManager
-                      .get('go_outside', category: 'menu')),
-                ),
-              if (widget.gameState.storeOpened)
-                PopupMenuItem<String>(
-                  value: 'explore',
-                  child: Text(GameSettings.languageManager
-                      .get('explore_path', category: 'menu')),
-                ),
-              // 分隔线
-              if ((widget.gameState.outsideUnlocked ||
-                      widget.gameState.storeOpened) &&
-                  (kDebugMode || GameSettings.devMode))
-                const PopupMenuDivider(),
-              // 开发者功能
-              if (kDebugMode || GameSettings.devMode) ...[
-                PopupMenuItem<String>(
-                  value: 'path',
-                  child: Text(GameSettings.languageManager
-                      .get('test_path', category: 'menu')),
-                ),
-                PopupMenuItem<String>(
-                  value: 'world',
-                  child: Text(GameSettings.languageManager
-                      .get('enter_world', category: 'menu')),
-                ),
-                PopupMenuItem<String>(
-                  value: 'resources',
-                  child: Text(GameSettings.languageManager
-                      .get('add_resources', category: 'menu')),
-                ),
-                PopupMenuItem<String>(
-                  value: 'unlock',
-                  child: Text(GameSettings.languageManager
-                      .get('unlock_all', category: 'menu')),
-                ),
-                PopupMenuItem<String>(
-                  value: 'story_event',
-                  child: Text("测试陌生人事件"),
-                ),
-                PopupMenuItem<String>(
-                  value: 'progress_event',
-                  child: Text("测试进度事件"),
-                ),
-              ],
-            ],
+            itemBuilder: (BuildContext context) {
+              List<PopupMenuEntry<String>> items = [];
+
+              // 添加基本游戏功能
+              if (widget.gameState.outsideUnlocked) {
+                items.add(
+                  PopupMenuItem<String>(
+                    value: 'outside',
+                    child: Text(GameSettings.languageManager
+                        .get('go_outside', category: 'menu')),
+                  ),
+                );
+              }
+              if (widget.gameState.storeOpened) {
+                items.add(
+                  PopupMenuItem<String>(
+                    value: 'explore',
+                    child: Text(GameSettings.languageManager
+                        .get('explore_path', category: 'menu')),
+                  ),
+                );
+              }
+
+              // 只在开发模式下添加开发者功能
+              if (kDebugMode || GameSettings.devMode) {
+                if (items.isNotEmpty) {
+                  items.add(const PopupMenuDivider());
+                }
+                items.addAll([
+                  PopupMenuItem<String>(
+                    value: 'path',
+                    child: Text(GameSettings.languageManager
+                        .get('test_path', category: 'menu')),
+                  ),
+                  PopupMenuItem<String>(
+                    value: 'world',
+                    child: Text(GameSettings.languageManager
+                        .get('enter_world', category: 'menu')),
+                  ),
+                  PopupMenuItem<String>(
+                    value: 'resources',
+                    child: Text(GameSettings.languageManager
+                        .get('add_resources', category: 'menu')),
+                  ),
+                  PopupMenuItem<String>(
+                    value: 'unlock',
+                    child: Text(GameSettings.languageManager
+                        .get('unlock_all', category: 'menu')),
+                  ),
+                  PopupMenuItem<String>(
+                    value: 'story_event',
+                    child: Text("测试陌生人事件"),
+                  ),
+                  PopupMenuItem<String>(
+                    value: 'progress_event',
+                    child: Text("测试进度事件"),
+                  ),
+                ]);
+              }
+
+              return items;
+            },
           ),
 
           // 语言切换按钮
