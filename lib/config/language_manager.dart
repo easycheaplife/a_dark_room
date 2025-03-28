@@ -4,8 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// 语言管理器 - 用于处理游戏中的多语言支持
 class LanguageManager extends ChangeNotifier {
-  static const String LANG_PREF_KEY = 'selected_language';
-  static const String DEFAULT_LANGUAGE = 'zh'; // 默认使用中文
+  static const String langPrefKey = 'selected_language';
+  static const String defaultLanguage = 'zh'; // 默认使用中文
 
   // 支持的语言
   static const Map<String, String> supportedLanguages = {
@@ -14,7 +14,7 @@ class LanguageManager extends ChangeNotifier {
   };
 
   // 当前选择的语言
-  String _currentLanguage = DEFAULT_LANGUAGE;
+  String _currentLanguage = defaultLanguage;
 
   // 获取当前语言
   String get currentLanguage => _currentLanguage;
@@ -609,7 +609,7 @@ class LanguageManager extends ChangeNotifier {
   Future<void> init() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _currentLanguage = prefs.getString(LANG_PREF_KEY) ?? DEFAULT_LANGUAGE;
+      _currentLanguage = prefs.getString(langPrefKey) ?? defaultLanguage;
 
       if (kDebugMode) {
         print('当前语言: $_currentLanguage');
@@ -618,7 +618,7 @@ class LanguageManager extends ChangeNotifier {
       if (kDebugMode) {
         print('初始化语言设置失败: $e');
       }
-      _currentLanguage = DEFAULT_LANGUAGE;
+      _currentLanguage = defaultLanguage;
     }
   }
 
@@ -633,7 +633,7 @@ class LanguageManager extends ChangeNotifier {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(LANG_PREF_KEY, languageCode);
+      await prefs.setString(langPrefKey, languageCode);
 
       _currentLanguage = languageCode;
       notifyListeners();

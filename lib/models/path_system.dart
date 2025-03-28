@@ -7,10 +7,10 @@ class PathSystem extends ChangeNotifier {
   Map<String, int> outfit = {};
 
   // 默认背包空间
-  static const int DEFAULT_BAG_SPACE = 10;
+  static const int defaultBagSpace = 10;
 
   // 物品重量配置
-  static const Map<String, double> Weight = {
+  static const Map<String, double> weight = {
     // 基础资源
     'cured meat': 1.0,
     'jerky': 0.5,
@@ -61,7 +61,7 @@ class PathSystem extends ChangeNotifier {
   };
 
   // 可装备的物品类型
-  static const List<String> EQUIPABLE_ITEMS = [
+  static const List<String> equipableItems = [
     'cured meat',
     'jerky',
     'water',
@@ -85,14 +85,14 @@ class PathSystem extends ChangeNotifier {
 
   /// 检查物品是否可装备
   bool isEquipable(String itemId) {
-    return EQUIPABLE_ITEMS.contains(itemId) ||
+    return equipableItems.contains(itemId) ||
         // 这里可以添加更多的判断逻辑
         (itemId.contains('armour') || itemId.contains('weapon'));
   }
 
   /// 获取物品重量
   double getItemWeight(String itemId) {
-    return Weight[itemId] ?? 1.0; // 默认每单位物品重量为1.0
+    return weight[itemId] ?? 1.0; // 默认每单位物品重量为1.0
   }
 
   /// 计算当前装备的总重量
@@ -106,7 +106,7 @@ class PathSystem extends ChangeNotifier {
 
   /// 获取背包容量
   int getCapacity() {
-    int capacity = DEFAULT_BAG_SPACE;
+    int capacity = defaultBagSpace;
 
     // 开发者模式下增加背包容量
     if (kDebugMode || GameSettings.devMode) {

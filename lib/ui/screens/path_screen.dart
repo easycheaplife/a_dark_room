@@ -95,7 +95,9 @@ class _PathScreenState extends State<PathScreen> {
                   ElevatedButton(
                     onPressed: () {
                       widget.gameState.currentLocation = 'room';
-                      widget.gameState.notifyListeners();
+                      setState(() {
+                        // Update state when changing location
+                      });
                     },
                     child: Text(GameSettings.languageManager
                         .get('return_to_room', category: 'path')),

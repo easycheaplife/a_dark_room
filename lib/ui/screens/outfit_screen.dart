@@ -196,7 +196,9 @@ class _OutfitScreenState extends State<OutfitScreen> {
             onPressed: () {
               // 不要使用Navigator.pop，而是直接切换到房间
               widget.gameState.currentLocation = 'room';
-              widget.gameState.notifyListeners();
+              setState(() {
+                // Update state when changing location
+              });
             },
           ),
 
