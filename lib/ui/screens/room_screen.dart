@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../../models/game_state.dart';
 import '../../models/event_system.dart';
-import '../../models/path_system.dart';
 import '../../config/game_settings.dart';
 import '../../engine/dev_tools.dart';
 import '../../config/language_manager.dart';
@@ -268,7 +267,6 @@ class _RoomScreenState extends State<RoomScreen> {
           const SizedBox(height: 4),
           ...widget.gameState.villagerTypes.entries.map((entry) {
             final type = entry.key;
-            final info = entry.value;
             final count = _population['workers']?[type] ?? 0;
             if (count == 0) return const SizedBox.shrink();
 
@@ -602,7 +600,7 @@ class _RoomScreenState extends State<RoomScreen> {
               child: Center(
                 child: Text(
                   GameSettings.languageManager.currentLanguage == 'zh' &&
-                          name.length > 0
+                          name.isNotEmpty
                       ? name.substring(0, 1)
                       : name.substring(0, 1).toUpperCase(),
                   style: TextStyle(
@@ -628,13 +626,13 @@ class _RoomScreenState extends State<RoomScreen> {
   // 构建日志视图
   Widget _buildGameLog() {
     // 创建一个ScrollController来控制滚动
-    final ScrollController _scrollController = ScrollController();
+    final ScrollController scrollController = ScrollController();
 
     // 使用Future.delayed来确保在构建完成后滚动到底部
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+      if (scrollController.hasClients) {
+        scrollController.animateTo(
+          scrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -653,7 +651,7 @@ class _RoomScreenState extends State<RoomScreen> {
           color: Colors.black,
         ),
         child: ListView.builder(
-          controller: _scrollController,
+          controller: scrollController,
           itemCount: _logs.length,
           itemBuilder: (context, index) {
             return Padding(
@@ -926,12 +924,10 @@ class _RoomScreenState extends State<RoomScreen> {
   Widget _buildBuildingsMenu() {
     List<Widget> buildingButtons = [];
 
-    if (widget.gameState != null) {
-      widget.gameState.availableBuildings.forEach((id, building) {
-        bool canBuild = widget.gameState.canBuild(id);
-        buildingButtons.add(_buildBuildingMenuItem(id, building, canBuild));
-      });
-    }
+    widget.gameState.availableBuildings.forEach((id, building) {
+      bool canBuild = widget.gameState.canBuild(id);
+      buildingButtons.add(_buildBuildingMenuItem(id, building, canBuild));
+    });
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -989,7 +985,6 @@ class _RoomScreenState extends State<RoomScreen> {
         // 显示可招募的村民
         ...widget.gameState.villagerTypes.entries.map((entry) {
           final type = entry.key;
-          final info = entry.value;
           final count = _population['workers']?[type] ?? 0;
 
           // 检查是否可以招募
@@ -1027,7 +1022,7 @@ class _RoomScreenState extends State<RoomScreen> {
                     ),
                   ),
                   Text(
-                    '${GameSettings.languageManager.get('requires', category: 'common')}: ${_formatCost(info['cost'] as Map<String, dynamic>)}',
+                    '${GameSettings.languageManager.get('requires', category: 'common')}: ${_formatCost(entry.value['cost'] as Map<String, dynamic>)}',
                     style: TextStyle(
                       color: canRecruit
                           ? Colors.grey.shade400
@@ -1103,7 +1098,7 @@ class _RoomScreenState extends State<RoomScreen> {
 
   // 添加事件对话框显示
   void _showEventDialog() {
-    if (widget.gameState?.currentEvent == null) return;
+    if (widget.gameState.currentEvent == null) return;
 
     GameEvent event = widget.gameState.currentEvent!;
     showDialog(
@@ -1127,7 +1122,7 @@ class _RoomScreenState extends State<RoomScreen> {
               const SizedBox(height: 16),
               ...event.choices!.map((choice) {
                 bool canChoose = widget.gameState.eventSystem
-                    .canChoose(choice, widget.gameState!);
+                    .canChoose(choice, widget.gameState);
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: ElevatedButton(
@@ -1191,7 +1186,6 @@ class _RoomScreenState extends State<RoomScreen> {
             const SizedBox(height: 10),
             ...widget.gameState.tradeSystem.tradeItems.entries.map((entry) {
               final itemId = entry.key;
-              final item = entry.value;
               final currentAmount = _resources[itemId] ?? 0;
               final buyPrice =
                   widget.gameState.tradeSystem.calculateBuyPrice(itemId, 1);
@@ -1469,7 +1463,7 @@ class _RoomScreenState extends State<RoomScreen> {
                   ),
                 ),
               );
-            }).toList(),
+            }),
             ElevatedButton(
               onPressed: () {
                 setState(() {
@@ -1755,11 +1749,6 @@ class _RoomScreenState extends State<RoomScreen> {
   // 探索路径的动作
   void _explorePathAction() {
     try {
-      // 确保路径系统初始化
-      if (widget.gameState.pathSystem == null) {
-        widget.gameState.pathSystem = PathSystem();
-      }
-
       // 清空并添加基础物资到背包
       widget.gameState.pathSystem.clearOutfit();
       widget.gameState.pathSystem.increaseSupply('cured meat');
@@ -1775,8 +1764,7 @@ class _RoomScreenState extends State<RoomScreen> {
 
       if (kDebugMode) {
         print('已进入探索路径');
-        print(
-            '路径系统状态: ${widget.gameState.pathSystem != null ? "已初始化" : "未初始化"}');
+        print('路径系统状态: 已初始化');
       }
     } catch (e) {
       _showMessage(

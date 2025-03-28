@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'game_state.dart';
 import 'path_system.dart';
@@ -211,24 +210,27 @@ class WorldSystem extends ChangeNotifier {
     }
   };
 
-  // 世界数据与位置
+  // 地图数据
   List<List<String>> map = [];
-  List<List<bool>> mask = []; // 可见性掩码
-  List<int>? position;
-  List<int>? lastPosition; // 记录上一个位置，用于检测从哪里进入当前位置
-  List<List<String>> landmarks = [];
+  List<List<bool>> mask = [];
+  List<List<int>> landmarks = [];
+
+  // 玩家位置
+  List<int> position = [VILLAGE_POS[0], VILLAGE_POS[1]];
+  List<int> lastPosition = [VILLAGE_POS[0], VILLAGE_POS[1]];
+
+  // 资源和状态
   int water = BASE_WATER;
-
-  // 飞船位置
-  List<int>? shipLocation;
-
-  // 资源计数
-  int food = 0;
   int moves = 0;
-  int totalMoveCount = 0; // 总移动次数，用于调试
+  int food = 0;
+  int totalMoveCount = 0;
+  bool fightAvailable = false;
+  int fightTimer = 0;
+  bool isDead = false;
+  int deathTimer = DEATH_COOLDOWN;
 
-  // 战斗相关
-  int fightCooldown = 0;
+  // 特殊位置
+  List<int>? shipLocation;
 
   // 初始化世界
   void init() {
@@ -249,9 +251,9 @@ class WorldSystem extends ChangeNotifier {
       }
 
       // 确保玩家位置正确设置
-      if (position == null) {
+      if (position.isEmpty) {
         position = [VILLAGE_POS[0], VILLAGE_POS[1]];
-        lastPosition = List.from(position!); // 初始化上一个位置
+        lastPosition = List.from(position); // 初始化上一个位置
         if (kDebugMode) {
           print('玩家位置未设置，设置默认位置：$position');
         }
@@ -262,8 +264,8 @@ class WorldSystem extends ChangeNotifier {
       }
 
       // 确保lastPosition已初始化
-      if (lastPosition == null) {
-        lastPosition = List.from(position!);
+      if (lastPosition.isEmpty) {
+        lastPosition = List.from(position);
         if (kDebugMode) {
           print('上一个位置未设置，设置为当前位置：$lastPosition');
         }
@@ -300,7 +302,7 @@ class WorldSystem extends ChangeNotifier {
     map = [];
     mask = [];
     position = [VILLAGE_POS[0], VILLAGE_POS[1]];
-    lastPosition = List.from(position!);
+    lastPosition = List.from(position);
     landmarks = [];
     water = BASE_WATER;
     moves = 0;
@@ -391,8 +393,8 @@ class WorldSystem extends ChangeNotifier {
 
   // 更新可见性遮罩
   void updateMask() {
-    int x = position![0];
-    int y = position![1];
+    int x = position[0];
+    int y = position[1];
 
     // 更新可见范围
     for (int i = -LIGHT_RADIUS; i <= LIGHT_RADIUS; i++) {
@@ -435,16 +437,16 @@ class WorldSystem extends ChangeNotifier {
     List<int> newPos;
     switch (direction) {
       case 'north':
-        newPos = [position![0], position![1] - 1];
+        newPos = [position[0], position[1] - 1];
         break;
       case 'south':
-        newPos = [position![0], position![1] + 1];
+        newPos = [position[0], position[1] + 1];
         break;
       case 'west':
-        newPos = [position![0] - 1, position![1]];
+        newPos = [position[0] - 1, position[1]];
         break;
       case 'east':
-        newPos = [position![0] + 1, position![1]];
+        newPos = [position[0] + 1, position[1]];
         break;
       default:
         if (kDebugMode) {
@@ -481,7 +483,7 @@ class WorldSystem extends ChangeNotifier {
     }
 
     // 保存上一个位置用于检测
-    lastPosition = List.from(position!);
+    lastPosition = List.from(position);
 
     // 更新位置
     position = newPos;
@@ -489,8 +491,8 @@ class WorldSystem extends ChangeNotifier {
     // 更新可见范围
     updateMask();
 
-    String currentTile = map[position![1]][position![0]];
-    String lastTile = map[lastPosition![1]][lastPosition![0]];
+    String currentTile = map[position[1]][position[0]];
+    String lastTile = map[lastPosition[1]][lastPosition[0]];
 
     if (kDebugMode) {
       print(
@@ -511,9 +513,9 @@ class WorldSystem extends ChangeNotifier {
     // 用于总移动次数追踪
     if (kDebugMode) {
       print('=== 检查位置事件 ===');
-      print('当前位置: $position, 地块类型: ${map[position![1]][position![0]]}');
+      print('当前位置: $position, 地块类型: ${map[position[1]][position[0]]}');
       print(
-          '上一位置: $lastPosition, 地块类型: ${lastPosition != null ? map[lastPosition![1]][lastPosition![0]] : ''}');
+          '上一位置: $lastPosition, 地块类型: ${lastPosition.isNotEmpty ? map[lastPosition[1]][lastPosition[0]] : ''}');
       print('游戏当前状态: ${gameState.currentLocation}');
       print('已移动步数: $moves, 水量: $water');
 
@@ -523,11 +525,11 @@ class WorldSystem extends ChangeNotifier {
     }
 
     // 检查是否刚进入村庄
-    if (position == null || lastPosition == null) return;
+    if (position.isEmpty || lastPosition.isEmpty) return;
 
-    String currentTile = map[position![1]][position![0]];
+    String currentTile = map[position[1]][position[0]];
     String lastTile =
-        lastPosition != null ? map[lastPosition![1]][lastPosition![0]] : '';
+        lastPosition.isNotEmpty ? map[lastPosition[1]][lastPosition[0]] : '';
 
     if (currentTile == TILE['VILLAGE']) {
       // 只有当从外部回到村庄时才切换回房间
@@ -607,18 +609,18 @@ class WorldSystem extends ChangeNotifier {
 
       // 保存位置信息
       gameState.world['location_info'][landmark.key] = {
-        'x': position![0],
-        'y': position![1],
+        'x': position[0],
+        'y': position[1],
         'label': landmark.value['label'],
         'scene': landmark.value['scene'],
       };
     }
 
     // 随机战斗检查
-    if (fightCooldown <= 0 && Random().nextDouble() < FIGHT_CHANCE) {
+    if (fightTimer <= 0 && Random().nextDouble() < FIGHT_CHANCE) {
       // 触发战斗
       // 这里简单标记，实际实现需要连接到战斗系统
-      fightCooldown = FIGHT_DELAY;
+      fightTimer = FIGHT_DELAY;
     }
 
     // 更新状态
@@ -630,7 +632,7 @@ class WorldSystem extends ChangeNotifier {
     if (shipLocation == null) return '未知';
 
     double angle =
-        atan2(shipLocation![1] - position![1], shipLocation![0] - position![0]);
+        atan2(shipLocation![1] - position[1], shipLocation![0] - position[0]);
 
     angle = angle * 180 / pi;
 
@@ -673,7 +675,7 @@ class WorldSystem extends ChangeNotifier {
       lastPosition = [lastPos[0], lastPos[1]];
     } else {
       // 如果没有保存上一个位置，使用当前位置
-      lastPosition = List.from(position!);
+      lastPosition = List.from(position);
     }
 
     // 加载飞船位置
@@ -690,7 +692,7 @@ class WorldSystem extends ChangeNotifier {
     moves = json['moves'] ?? 0;
 
     // 加载战斗冷却
-    fightCooldown = json['fightCooldown'] ?? 0;
+    fightTimer = json['fightTimer'] ?? 0;
   }
 
   // 转换为JSON
@@ -704,7 +706,7 @@ class WorldSystem extends ChangeNotifier {
       'water': water,
       'food': food,
       'moves': moves,
-      'fightCooldown': fightCooldown,
+      'fightTimer': fightTimer,
     };
   }
 }

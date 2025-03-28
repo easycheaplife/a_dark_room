@@ -20,9 +20,6 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
-  bool _outsideUnlocked = false;
-  int _currentIndex = 0; // 改为可变
-
   @override
   void initState() {
     super.initState();
@@ -46,10 +43,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   // 更新当前位置
-  void _updateLocation() {
-    _outsideUnlocked = widget.gameState.outsideUnlocked;
-    _currentIndex = widget.gameState.currentLocation == 'room' ? 0 : 1;
-  }
+  void _updateLocation() {}
 
   @override
   Widget build(BuildContext context) {
@@ -76,31 +70,5 @@ class _GameScreenState extends State<GameScreen> {
       default:
         return RoomScreen(gameState: widget.gameState);
     }
-  }
-
-  // 构建底部导航栏
-  Widget _buildNavigationBar() {
-    return BottomNavigationBar(
-      backgroundColor: Colors.black,
-      selectedItemColor: Colors.white,
-      unselectedItemColor: Colors.grey,
-      currentIndex: _currentIndex,
-      onTap: (index) {
-        setState(() {
-          widget.gameState.currentLocation = index == 0 ? 'room' : 'outside';
-          widget.gameState.notifyListeners();
-        });
-      },
-      items: [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home),
-          label: '房间',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.forest),
-          label: '外部',
-        ),
-      ],
-    );
   }
 }

@@ -1,6 +1,4 @@
-import 'dart:math';
 import 'package:flutter/foundation.dart';
-import 'game_state.dart';
 import '../config/game_settings.dart';
 
 /// 探索路径系统 - 管理背包装备和路径相关逻辑

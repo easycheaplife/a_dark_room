@@ -118,7 +118,8 @@ class DevTools {
       'charcutier': 3,
     };
 
-    if (gameState.population['workers'] == null) {
+    // 确保worker字典已初始化
+    if (gameState.population['workers'] is! Map) {
       gameState.population['workers'] = {};
     }
 
@@ -192,24 +193,15 @@ class DevTools {
     // 再设置路径测试专用资源
     setupPathTesting(gameState);
 
-    // 确保路径系统初始化
-    if (gameState.pathSystem == null) {
-      if (kDebugMode) {
-        print('错误: 路径系统未初始化');
-      }
-      return;
-    }
-
     // 确保物品在背包中为空，准备装配
     gameState.pathSystem.clearOutfit();
 
     // 跳转到路径
     gameState.currentLocation = 'path';
-    gameState.notifyListeners();
 
     if (kDebugMode) {
       print('已跳转到路径装备界面');
-      print('路径系统状态: ${gameState.pathSystem != null ? "已初始化" : "未初始化"}');
+      print('路径系统状态: 已初始化');
       print('当前装备: ${gameState.pathSystem.outfit}');
     }
   }
@@ -221,14 +213,6 @@ class DevTools {
 
     // 再设置路径测试专用资源
     setupPathTesting(gameState);
-
-    // 确保路径系统已初始化
-    if (gameState.pathSystem == null) {
-      if (kDebugMode) {
-        print('错误: 路径系统未初始化');
-      }
-      return;
-    }
 
     // 确保有足够物品在背包中
     gameState.pathSystem.clearOutfit();
@@ -244,14 +228,6 @@ class DevTools {
     gameState.pathSystem.increaseSupply('rifle');
     gameState.pathSystem.increaseSupply('steel sword');
 
-    // 确保世界地图已初始化
-    if (gameState.worldSystem == null) {
-      if (kDebugMode) {
-        print('错误: 世界系统未初始化');
-      }
-      return;
-    }
-
     // 重置状态
     gameState.worldSystem.resetWorld();
 
@@ -266,18 +242,17 @@ class DevTools {
       WorldSystem.VILLAGE_POS[1]
     ];
     gameState.worldSystem.lastPosition =
-        List.from(gameState.worldSystem.position!);
+        List.from(gameState.worldSystem.position);
 
     // 更新可见范围
     gameState.worldSystem.updateMask();
 
     // 跳转到世界地图
     gameState.currentLocation = 'world';
-    gameState.notifyListeners();
 
     if (kDebugMode) {
       print('已跳转到世界地图');
-      print('世界系统状态: ${gameState.worldSystem != null ? "已初始化" : "未初始化"}');
+      print('世界系统状态: 已初始化');
       print('玩家位置: ${gameState.worldSystem.position}');
       print('水量: ${gameState.worldSystem.water}');
       print('背包内容: ${gameState.pathSystem.outfit}');

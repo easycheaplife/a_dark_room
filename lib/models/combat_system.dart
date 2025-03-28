@@ -130,7 +130,7 @@ class CombatSystem {
     int totalDefense = 1; // 提供基础防御力
 
     // 根据玩家等级增加属性
-    int level = state.level ?? 1;
+    int level = state.level;
     totalAttack += level;
     totalDefense += (level / 2).floor();
 

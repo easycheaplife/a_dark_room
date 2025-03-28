@@ -13,6 +13,13 @@ import 'world_system.dart';
 import 'path_system.dart';
 
 class GameState extends ChangeNotifier {
+  // 日志工具方法，只在调试模式下打印
+  void _log(String message) {
+    if (kDebugMode) {
+      print(message);
+    }
+  }
+
   // 基本状态
   String currentLocation = 'room'; // 当前位置：起始为room
 
@@ -115,7 +122,7 @@ class GameState extends ChangeNotifier {
     // 更新等级
     buildingLevels[buildingId] = currentLevel + 1;
 
-    // 应用升级效果
+    // 应用建筑效果
     applyBuildingEffects(buildingId, false);
 
     return true;
@@ -211,7 +218,7 @@ class GameState extends ChangeNotifier {
   final WorldSystem worldSystem = WorldSystem();
 
   // 添加路径系统
-  late PathSystem pathSystem;
+  PathSystem pathSystem = PathSystem();
 
   // 初始化事件系统
   void initEventSystem() {
@@ -228,7 +235,7 @@ class GameState extends ChangeNotifier {
     GameEvent? newEvent = eventSystem.getRandomEvent(this);
     if (newEvent != null) {
       currentEvent = newEvent;
-      if (newEvent.choices == null) {
+      if (newEvent.choices?.isEmpty ?? true) {
         eventSystem.applyEventEffects(newEvent.effects, this);
         currentEvent = null;
       }
@@ -389,9 +396,6 @@ class GameState extends ChangeNotifier {
     // 初始化自动存档定时器
     _initAutoSave();
 
-    // 初始化路径系统
-    pathSystem = PathSystem();
-
     // 监听语言变化
     GameSettings.languageManager.addListener(_onLanguageChanged);
 
@@ -418,7 +422,7 @@ class GameState extends ChangeNotifier {
       _lastAutoSave = DateTime.now();
       addLog('游戏已自动保存');
     } catch (e) {
-      print('自动存档失败: $e');
+      _log('自动存档失败: $e');
       addLog('自动存档失败: $e');
     }
   }
@@ -501,7 +505,6 @@ class GameState extends ChangeNotifier {
   }
 
   // 转换为JSON
-  @override
   Map<String, dynamic> toJson() {
     return {
       'currentLocation': currentLocation,
@@ -535,7 +538,6 @@ class GameState extends ChangeNotifier {
   }
 
   // 从JSON加载
-  @override
   void fromJson(Map<String, dynamic> json) {
     currentLocation = json['currentLocation'] ?? 'room';
     resources = Map<String, int>.from(json['resources'] ?? {});
@@ -900,8 +902,8 @@ class GameState extends ChangeNotifier {
   }
 
   // 添加存档相关字段
-  static const String SAVE_DIRECTORY = GameSettings.SAVE_DIRECTORY;
-  static const int MAX_SAVE_SLOTS = GameSettings.MAX_SAVE_SLOTS;
+  static const String saveDirectory = GameSettings.SAVE_DIRECTORY;
+  static const int maxSaveSlots = GameSettings.MAX_SAVE_SLOTS;
   String currentSaveSlot = 'slot1';
 
   // 获取存档目录
@@ -919,7 +921,7 @@ class GameState extends ChangeNotifier {
   // 获取所有存档槽位信息
   Future<List<Map<String, dynamic>>> getAllSaveSlots() async {
     List<Map<String, dynamic>> slots = [];
-    for (int i = 1; i <= MAX_SAVE_SLOTS; i++) {
+    for (int i = 1; i <= maxSaveSlots; i++) {
       String slotKey = 'slot$i';
       final prefs = await SharedPreferences.getInstance();
       String? saveData = prefs.getString(slotKey);
@@ -933,7 +935,7 @@ class GameState extends ChangeNotifier {
             'population': data['population']?['total'] ?? 0,
           });
         } catch (e) {
-          print('Error reading save slot $slotKey: $e');
+          _log('Error reading save slot $slotKey: $e');
         }
       } else {
         slots.add({
@@ -958,11 +960,11 @@ class GameState extends ChangeNotifier {
       await prefs.setString(currentSaveSlot, jsonEncode(saveData));
 
       // 保存存档目录
-      await setSaveDirectory(SAVE_DIRECTORY);
+      await setSaveDirectory(saveDirectory);
 
       notifyListeners();
     } catch (e) {
-      print('Error saving game: $e');
+      _log('Error saving game: $e');
       rethrow;
     }
   }
@@ -973,96 +975,96 @@ class GameState extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       String saveSlot = slot ?? currentSaveSlot;
 
-      print('Loading game from slot: $saveSlot');
+      _log('Loading game from slot: $saveSlot');
 
       // 检查是否有存档
       if (!prefs.containsKey(saveSlot)) {
-        print('No save data found in slot: $saveSlot');
+        _log('No save data found in slot: $saveSlot');
         return false;
       }
 
       // 加载存档数据
       String? saveDataString = prefs.getString(saveSlot);
       if (saveDataString == null) {
-        print('Save data is null for slot: $saveSlot');
+        _log('Save data is null for slot: $saveSlot');
         return false;
       }
 
-      print('Found save data, attempting to decode...');
+      _log('Found save data, attempting to decode...');
       final saveData = jsonDecode(saveDataString);
-      print('Successfully decoded save data');
+      _log('Successfully decoded save data');
 
       // 更新当前槽位
       currentSaveSlot = saveSlot;
-      print('Updated current save slot to: $currentSaveSlot');
+      _log('Updated current save slot to: $currentSaveSlot');
 
       // 加载基本游戏状态
       currentLocation = saveData['currentLocation'] ?? 'room';
       outsideUnlocked = saveData['outsideUnlocked'] ?? false;
       storeOpened = saveData['storeOpened'] ?? false;
-      print(
+      _log(
           'Loaded basic game state: location=$currentLocation, outsideUnlocked=$outsideUnlocked, storeOpened=$storeOpened');
 
       // 加载资源
       resources = Map<String, int>.from(saveData['resources'] ?? {});
-      print('Loaded resources: ${resources.length} items');
+      _log('Loaded resources: ${resources.length} items');
 
       // 加载房间状态
       room = Map<String, dynamic>.from(saveData['room'] ?? {});
-      print('Loaded room state: ${room.length} items');
+      _log('Loaded room state: ${room.length} items');
 
       // 加载建筑等级
       buildingLevels = Map<String, int>.from(saveData['buildingLevels'] ?? {});
-      print('Loaded building levels: ${buildingLevels.length} items');
+      _log('Loaded building levels: ${buildingLevels.length} items');
 
       // 加载人口信息
       population = Map<String, dynamic>.from(saveData['population'] ??
           {'workers': {}, 'total': 0, 'max': 0, 'happiness': 100});
-      print(
+      _log(
           'Loaded population: total=${population['total']}, max=${population['max']}');
 
       // 加载建筑维护信息
       buildingMaintenance = Map<String, Map<String, dynamic>>.from(
         saveData['buildingMaintenance'] ?? {},
       );
-      print('Loaded building maintenance: ${buildingMaintenance.length} items');
+      _log('Loaded building maintenance: ${buildingMaintenance.length} items');
 
       // 加载事件系统状态
       if (saveData['eventSystem'] != null) {
         eventSystem.fromJson(saveData['eventSystem']);
-        print('Loaded event system state');
+        _log('Loaded event system state');
       }
 
       // 加载交易系统状态
       if (saveData['tradeSystem'] != null) {
         tradeSystem.fromJson(saveData['tradeSystem']);
-        print('Loaded trade system state');
+        _log('Loaded trade system state');
       }
 
       // 加载制作系统状态
       if (saveData['craftingSystem'] != null) {
         craftingSystem.fromJson(saveData['craftingSystem']);
-        print('Loaded crafting system state');
+        _log('Loaded crafting system state');
       }
 
       // 加载世界系统状态
       if (saveData['worldSystem'] != null) {
         worldSystem.fromJson(saveData['worldSystem']);
-        print('Loaded world system state');
+        _log('Loaded world system state');
       }
 
       // 加载路径系统状态
       if (saveData['pathSystem'] != null) {
         pathSystem.fromJson(saveData['pathSystem']);
-        print('Loaded path system state');
+        _log('Loaded path system state');
       }
 
-      print('Game loaded successfully');
+      _log('Game loaded successfully');
       notifyListeners();
       return true;
     } catch (e, stackTrace) {
-      print('Error loading game: $e');
-      print('Stack trace: $stackTrace');
+      _log('Error loading game: $e');
+      _log('Stack trace: $stackTrace');
       return false;
     }
   }
@@ -1072,10 +1074,10 @@ class GameState extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       bool hasSave = prefs.containsKey(currentSaveSlot);
-      print('Checking for save game in slot $currentSaveSlot: $hasSave');
+      _log('Checking for save game in slot $currentSaveSlot: $hasSave');
       return hasSave;
     } catch (e) {
-      print('Error checking for save game: $e');
+      _log('Error checking for save game: $e');
       return false;
     }
   }
@@ -1084,31 +1086,31 @@ class GameState extends ChangeNotifier {
   Future<void> deleteSaveSlot(String slot) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      print('Attempting to delete save slot: $slot');
+      _log('Attempting to delete save slot: $slot');
 
       // 检查存档是否存在
       if (!prefs.containsKey(slot)) {
-        print('Save slot $slot does not exist');
+        _log('Save slot $slot does not exist');
         return;
       }
 
       // 如果删除的是当前存档槽位，重置当前槽位
       if (slot == currentSaveSlot) {
         currentSaveSlot = 'slot1';
-        print('Reset current save slot to slot1');
+        _log('Reset current save slot to slot1');
       }
 
       // 删除存档
       bool success = await prefs.remove(slot);
-      print('Delete save slot $slot: ${success ? 'success' : 'failed'}');
+      _log('Delete save slot $slot: ${success ? 'success' : 'failed'}');
 
       // 强制刷新 SharedPreferences
       await prefs.reload();
-      print('Reloaded SharedPreferences');
+      _log('Reloaded SharedPreferences');
 
       // 验证存档是否已被删除
       if (prefs.containsKey(slot)) {
-        print('Warning: Save slot $slot still exists after deletion');
+        _log('Warning: Save slot $slot still exists after deletion');
         // 尝试再次删除
         await prefs.remove(slot);
         await prefs.reload();
@@ -1116,9 +1118,9 @@ class GameState extends ChangeNotifier {
 
       // 通知监听器更新UI
       notifyListeners();
-      print('Notified listeners of save slot deletion');
+      _log('Notified listeners of save slot deletion');
     } catch (e) {
-      print('Error deleting save slot: $e');
+      _log('Error deleting save slot: $e');
       rethrow;
     }
   }
@@ -1134,33 +1136,33 @@ class GameState extends ChangeNotifier {
   Future<void> clearAllSaveSlots() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      print('Starting to clear all save slots...');
+      _log('Starting to clear all save slots...');
 
       // 删除所有存档槽位
-      for (int i = 1; i <= MAX_SAVE_SLOTS; i++) {
+      for (int i = 1; i <= maxSaveSlots; i++) {
         String slotKey = 'slot$i';
-        print('Attempting to delete save slot: $slotKey');
+        _log('Attempting to delete save slot: $slotKey');
 
         // 检查存档是否存在
         if (!prefs.containsKey(slotKey)) {
-          print('Save slot $slotKey does not exist, skipping...');
+          _log('Save slot $slotKey does not exist, skipping...');
           continue;
         }
 
         // 删除存档
         bool success = await prefs.remove(slotKey);
-        print('Delete save slot $slotKey: ${success ? 'success' : 'failed'}');
+        _log('Delete save slot $slotKey: ${success ? 'success' : 'failed'}');
 
         // 验证存档是否已被删除
         if (prefs.containsKey(slotKey)) {
-          print('Warning: Save slot $slotKey still exists after deletion');
+          _log('Warning: Save slot $slotKey still exists after deletion');
           // 尝试再次删除
           await prefs.remove(slotKey);
           await prefs.reload();
 
           // 再次验证
           if (prefs.containsKey(slotKey)) {
-            print(
+            _log(
                 'Error: Failed to delete save slot $slotKey after multiple attempts');
             throw Exception('Failed to delete save slot $slotKey');
           }
@@ -1169,17 +1171,17 @@ class GameState extends ChangeNotifier {
 
       // 重置当前存档槽位
       currentSaveSlot = 'slot1';
-      print('Reset current save slot to slot1');
+      _log('Reset current save slot to slot1');
 
       // 强制刷新 SharedPreferences
       await prefs.reload();
-      print('Reloaded SharedPreferences');
+      _log('Reloaded SharedPreferences');
 
       // 验证是否还有任何存档存在
-      for (int i = 1; i <= MAX_SAVE_SLOTS; i++) {
+      for (int i = 1; i <= maxSaveSlots; i++) {
         String slotKey = 'slot$i';
         if (prefs.containsKey(slotKey)) {
-          print(
+          _log(
               'Error: Save slot $slotKey still exists after clearing all slots');
           throw Exception('Failed to clear all save slots');
         }
@@ -1187,9 +1189,9 @@ class GameState extends ChangeNotifier {
 
       // 通知监听器更新UI
       notifyListeners();
-      print('Successfully cleared all save slots and notified listeners');
+      _log('Successfully cleared all save slots and notified listeners');
     } catch (e) {
-      print('Error clearing all save slots: $e');
+      _log('Error clearing all save slots: $e');
       rethrow;
     }
   }
@@ -1418,7 +1420,7 @@ class GameState extends ChangeNotifier {
   bool embarkonPath() {
     if (!pathSystem.canEmbark()) {
       if (kDebugMode) {
-        print('无法出发: 背包中没有足够的食物');
+        _log('无法出发: 背包中没有足够的食物');
       }
       return false;
     }
@@ -1441,7 +1443,7 @@ class GameState extends ChangeNotifier {
     notifyListeners();
 
     if (kDebugMode) {
-      print('出发成功，已扣除背包中的物品');
+      _log('出发成功，已扣除背包中的物品');
     }
 
     return true;

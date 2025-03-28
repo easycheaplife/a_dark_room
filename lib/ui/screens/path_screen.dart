@@ -21,7 +21,6 @@ class PathScreen extends StatefulWidget {
 class _PathScreenState extends State<PathScreen> {
   late PathSystem _pathSystem;
   Map<String, int> _outfit = {};
-  Map<String, int> _bagSpace = {};
   Map<String, int> _resources = {};
   String _statusMessage = '';
 
@@ -54,10 +53,6 @@ class _PathScreenState extends State<PathScreen> {
     setState(() {
       _outfit = Map<String, int>.from(_pathSystem.outfit);
       _resources = Map<String, int>.from(widget.gameState.resources);
-      _bagSpace = {
-        'free': _pathSystem.getFreeSpace(),
-        'total': _pathSystem.getCapacity(),
-      };
       _statusMessage = '';
     });
   }

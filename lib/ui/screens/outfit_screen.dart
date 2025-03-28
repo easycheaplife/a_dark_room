@@ -11,12 +11,12 @@ class OutfitScreen extends StatefulWidget {
   final Function onEmbark;
 
   const OutfitScreen({
-    Key? key,
+    super.key,
     required this.gameState,
     required this.pathSystem,
     required this.worldSystem,
     required this.onEmbark,
-  }) : super(key: key);
+  });
 
   @override
   State<OutfitScreen> createState() => _OutfitScreenState();
@@ -122,7 +122,7 @@ class _OutfitScreenState extends State<OutfitScreen> {
                     '${GameSettings.languageManager.get('weight', category: 'outfit')}: ${widget.pathSystem.getItemWeight(item)}'),
                 const SizedBox(width: 16),
                 Text(
-                    '${GameSettings.languageManager.get('available', category: 'outfit')}: ${available}'),
+                    '${GameSettings.languageManager.get('available', category: 'outfit')}: $available'),
               ],
             ),
             trailing: Row(

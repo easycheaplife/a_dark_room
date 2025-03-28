@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../engine/game_engine.dart';
 import '../../models/game_state.dart';
 import '../../models/combat_system.dart';
 import '../../config/game_settings.dart';
@@ -585,13 +584,13 @@ class _OutsideScreenState extends State<OutsideScreen> {
     }
 
     // 创建一个ScrollController来控制滚动
-    final ScrollController _scrollController = ScrollController();
+    final ScrollController scrollController = ScrollController();
 
     // 使用Future.delayed来确保在构建完成后滚动到底部
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+      if (scrollController.hasClients) {
+        scrollController.animateTo(
+          scrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -610,7 +609,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
           color: Colors.black,
         ),
         child: ListView.builder(
-          controller: _scrollController,
+          controller: scrollController,
           itemCount: _logs.length,
           itemBuilder: (context, index) {
             return Padding(
@@ -850,21 +849,16 @@ class _OutsideScreenState extends State<OutsideScreen> {
                     if (result.containsKey('victory')) {
                       // 战斗结束
                       if (result['victory']) {
-                        _addLog(GameSettings.languageManager
-                                .get('victory', category: 'combat') +
-                            ' ' +
-                            GameSettings.languageManager
-                                .get('loot_gained', category: 'combat'));
+                        _addLog(
+                            '${GameSettings.languageManager.get('victory', category: 'combat')} ${GameSettings.languageManager.get('loot_gained', category: 'combat')}');
                         (result['loot'] as Map<String, int>)
                             .forEach((resource, amount) {
                           _addLog(
                               '${GameSettings.languageManager.get(resource, category: 'resources')}: $amount');
                         });
                         if (result.containsKey('experience')) {
-                          _addLog(GameSettings.languageManager.get(
-                                  'experience_gained',
-                                  category: 'combat') +
-                              ' ${result['experience']}');
+                          _addLog(
+                              '${GameSettings.languageManager.get('experience_gained', category: 'combat')} ${result['experience']}');
                         }
                       } else {
                         _addLog(GameSettings.languageManager

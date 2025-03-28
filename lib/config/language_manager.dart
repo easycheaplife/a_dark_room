@@ -31,7 +31,7 @@ class LanguageManager extends ChangeNotifier {
   LanguageManager._internal();
 
   // 翻译文本集合
-  static Map<String, Map<String, Map<String, String>>> _translations = {
+  static final Map<String, Map<String, Map<String, String>>> _translations = {
     'en': {
       'common': {
         'save_success': 'Game saved successfully',

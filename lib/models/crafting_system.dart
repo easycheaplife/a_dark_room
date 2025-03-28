@@ -44,8 +44,8 @@ class CraftingSystem {
   );
 
   // 添加制作进度追踪
-  Map<String, DateTime> _activeCrafting = {};
-  Map<String, Timer> _craftingTimers = {};
+  final Map<String, DateTime> _activeCrafting = {};
+  final Map<String, Timer> _craftingTimers = {};
 
   // 更新所有配方的翻译
   void updateAllRecipeTranslations() {
@@ -180,7 +180,9 @@ class CraftingSystem {
   void fromJson(Map<String, dynamic> json) {
     // 清理现有状态
     _activeCrafting.clear();
-    _craftingTimers.values.forEach((timer) => timer.cancel());
+    for (var timer in _craftingTimers.values) {
+      timer.cancel();
+    }
     _craftingTimers.clear();
 
     // 恢复制作状态
@@ -194,7 +196,9 @@ class CraftingSystem {
 
   // 清理资源
   void dispose() {
-    _craftingTimers.values.forEach((timer) => timer.cancel());
+    for (var timer in _craftingTimers.values) {
+      timer.cancel();
+    }
     _craftingTimers.clear();
     _activeCrafting.clear();
   }
