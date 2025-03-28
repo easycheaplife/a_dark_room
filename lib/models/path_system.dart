@@ -1,10 +1,17 @@
 import 'package:flutter/foundation.dart';
 import '../config/game_settings.dart';
+import '../models/game_state.dart';
 
 /// 探索路径系统 - 管理背包装备和路径相关逻辑
 class PathSystem extends ChangeNotifier {
+  // 添加对GameState的引用
+  final GameState gameState;
+
   // 背包当前物品
   Map<String, int> outfit = {};
+
+  // 构造函数，接收GameState实例
+  PathSystem(this.gameState);
 
   // 默认背包空间
   static const int defaultBagSpace = 10;

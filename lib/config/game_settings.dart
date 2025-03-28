@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'language_manager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// 游戏设置 - 集中管理游戏配置和设置
 class GameSettings {
@@ -831,7 +832,7 @@ class GameSettings {
   };
 
   // 开发者相关设置
-  static const bool devMode = true;
+  static const bool devMode = false;
 
   // 开发者选项
   static const Map<String, bool> devOptions = {
@@ -844,15 +845,91 @@ class GameSettings {
   // 语言管理器
   static final LanguageManager languageManager = LanguageManager();
 
+  // 添加故事事件相关多语言文本
+  static Map<String, Map<String, String>> storyEventTexts = {
+    'en': {
+      // 陌生人事件
+      'stranger_arrives_title': 'A Stranger',
+      'stranger_arrives_desc':
+          'A bedraggled traveller stumbles through the door. They\'re covered in blood and ash.',
+      'take_in_stranger': 'Take them in',
+      'drive_away_stranger': 'Turn them away',
+      'stranger_accepted_log':
+          'The stranger comes in, and collapses in the corner.',
+      'stranger_rejected_log':
+          'The stranger is turned away and departs into the darkness.',
+
+      // 建造小屋事件
+      'build_hut_title': 'The Stranger',
+      'build_hut_desc':
+          'The stranger suggests building a small hut for storing supplies. It would require 100 wood.',
+      'accept_build_hut': 'Build the hut',
+      'refuse_build_hut': 'Not now',
+      'building_hut_log': 'The hut is built. The stranger looks pleased.',
+      'delay_building_hut_log':
+          'The stranger nods, understanding the resources are needed elsewhere.',
+
+      // 村庄开始事件
+      'village_started_title': 'The Beginning',
+      'village_started_desc':
+          'With the small hut built, other travelers begin to show interest in the camp. The village is starting to form.',
+      'village_started_log':
+          'Others start coming to the village. The stranger says new huts can be built, and people can help gather resources.',
+    },
+    'zh': {
+      // 陌生人事件
+      'stranger_arrives_title': '陌生人',
+      'stranger_arrives_desc': '一位衣衫褴褛的旅行者跌跌撞撞地走进门来。他们浑身是血和灰烬。',
+      'take_in_stranger': '收留他们',
+      'drive_away_stranger': '将他们赶走',
+      'stranger_accepted_log': '陌生人走了进来，倒在角落里。',
+      'stranger_rejected_log': '陌生人被拒之门外，消失在黑暗中。',
+
+      // 建造小屋事件
+      'build_hut_title': '陌生人',
+      'build_hut_desc': '陌生人建议建造一个小屋来储存物资。这需要100单位的木材。',
+      'accept_build_hut': '建造小屋',
+      'refuse_build_hut': '暂不建造',
+      'building_hut_log': '小屋建好了。陌生人看起来很满意。',
+      'delay_building_hut_log': '陌生人点点头，明白资源需要用在其他地方。',
+
+      // 村庄开始事件
+      'village_started_title': '开始',
+      'village_started_desc': '随着小屋的建成，其他旅行者开始对营地产生兴趣。村庄正在形成。',
+      'village_started_log': '其他人开始来到村庄。陌生人说可以建造新的小屋，人们可以帮助收集资源。',
+    },
+  };
+
   // 初始化设置
   static Future<void> init() async {
-    // 初始化语言设置
-    await languageManager.init();
+    try {
+      // 加载语言设置
+      final prefs = await SharedPreferences.getInstance();
+      String savedLang = prefs.getString(LanguageManager.langPrefKey) ?? 'zh';
+      languageManager.setLanguage(savedLang);
 
-    if (kDebugMode) {
-      print('游戏设置初始化完成');
-      print('开发者模式: $devMode');
-      print('当前语言: ${languageManager.currentLanguage}');
+      // 加载故事文本
+      updateLanguageWithStoryTexts();
+
+      // 初始化其他设置...
+    } catch (e) {
+      if (kDebugMode) {
+        print('初始化游戏设置时出错: $e');
+      }
+    }
+  }
+
+  // 添加加载故事文本的方法
+  static void updateLanguageWithStoryTexts() {
+    // 获取当前语言代码
+    String langCode = languageManager.currentLanguage;
+
+    // 添加故事文本
+    if (storyEventTexts.containsKey(langCode)) {
+      Map<String, String> texts = storyEventTexts[langCode]!;
+      texts.forEach((key, value) {
+        languageManager.addTranslation('story', key, value, langCode);
+      });
     }
   }
 

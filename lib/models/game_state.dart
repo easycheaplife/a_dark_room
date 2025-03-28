@@ -12,6 +12,8 @@ import '../config/game_settings.dart';
 import 'world_system.dart';
 import 'path_system.dart';
 import 'narrative_system.dart';
+import 'story_system.dart';
+import 'game_event.dart' as game_event;
 
 class GameState extends ChangeNotifier {
   // 日志工具方法，只在调试模式下打印
@@ -23,6 +25,11 @@ class GameState extends ChangeNotifier {
 
   // 基本状态
   String currentLocation = 'room'; // 当前位置：起始为room
+
+  // 游戏时间跟踪
+  DateTime gameStartTime = DateTime.now();
+  Duration gamePlayTime = Duration.zero;
+  Timer? _gameTimeTimer;
 
   // 资源管理
   Map<String, int> resources =
@@ -206,23 +213,30 @@ class GameState extends ChangeNotifier {
   // 建筑效率惩罚
   Map<String, double> buildingEfficiencyPenalty = {};
 
-  final EventSystem eventSystem = EventSystem();
-  final TradeSystem tradeSystem = TradeSystem();
-  final CraftingSystem craftingSystem = CraftingSystem();
+  EventSystem eventSystem = EventSystem();
+  TradeSystem tradeSystem = TradeSystem();
+  CraftingSystem craftingSystem = CraftingSystem();
   GameEvent? currentEvent;
   Timer? eventTimer;
 
   // 添加战斗系统
-  final CombatSystem combatSystem = CombatSystem();
+  CombatSystem combatSystem = CombatSystem();
 
   // 添加世界系统
-  final WorldSystem worldSystem = WorldSystem();
+  WorldSystem worldSystem = WorldSystem();
 
   // 添加路径系统
-  PathSystem pathSystem = PathSystem();
+  late PathSystem pathSystem;
 
   // 添加叙事系统
   late NarrativeSystem narrativeSystem;
+
+  // 系统实例
+  late StorySystem storySystem; // 新增故事系统
+
+  // 游戏日志
+  List<String> gameLogs = [];
+  List<String> storyLogs = []; // 新增故事日志
 
   // 初始化事件系统
   void initEventSystem() {
@@ -409,7 +423,61 @@ class GameState extends ChangeNotifier {
     // 初始化叙事系统
     initNarrativeSystem();
 
-    // ... 其他初始化代码 ...
+    // 初始化依赖于GameState的子系统
+    pathSystem = PathSystem(this);
+    storySystem = StorySystem(this); // 初始化故事系统
+
+    // 启动游戏时间追踪
+    _startGameTimeTracking();
+  }
+
+  // 启动游戏时间追踪
+  void _startGameTimeTracking() {
+    _gameTimeTimer?.cancel();
+    _gameTimeTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+      gamePlayTime = DateTime.now().difference(gameStartTime);
+
+      // 定期检查故事进度
+      if (currentLocation == 'room') {
+        storySystem.checkStoryProgress();
+      }
+    });
+  }
+
+  // 添加故事日志
+  void addStoryLog(String message) {
+    storyLogs.add(message);
+    if (storyLogs.length > 20) {
+      storyLogs.removeAt(0); // 保持最多20条故事日志
+    }
+
+    // 同时添加到游戏日志
+    gameLogs.add(message);
+    if (gameLogs.length > 50) {
+      gameLogs.removeAt(0); // 保持最多50条游戏日志
+    }
+
+    notifyListeners();
+  }
+
+  // 添加故事事件处理方法
+  void handleStoryEvent(GameEvent event) {
+    currentEvent = event;
+    notifyListeners();
+  }
+
+  // 更新故事标记和通知UI
+  void updateStoryFlag(String flag, bool value) {
+    if (storySystem.storyFlags.containsKey(flag)) {
+      storySystem.storyFlags[flag] = value;
+      notifyListeners();
+    }
+  }
+
+  // 处理故事选择
+  void handleStoryChoice(game_event.Choice choice) {
+    storySystem.handleStoryChoice(choice);
+    notifyListeners();
   }
 
   // 初始化自动存档
@@ -502,9 +570,6 @@ class GameState extends ChangeNotifier {
     super.dispose();
   }
 
-  // 添加日志列表
-  List<String> gameLogs = [];
-
   // 添加日志方法
   void addLog(String message) {
     gameLogs.add(message);
@@ -542,6 +607,9 @@ class GameState extends ChangeNotifier {
       'worldSystem': worldSystem.toJson(),
       'pathSystem': pathSystem.toJson(),
       'narrativeSystem': narrativeSystem.toJson(),
+      'storySystem': storySystem.toJson(),
+      'storyLogs': storyLogs,
+      'gamePlayTime': gamePlayTime.inSeconds,
     };
   }
 
@@ -589,6 +657,17 @@ class GameState extends ChangeNotifier {
     }
     if (json.containsKey('narrativeSystem')) {
       narrativeSystem.fromJson(json['narrativeSystem']);
+    }
+    if (json.containsKey('storySystem')) {
+      storySystem.fromJson(json['storySystem']);
+    }
+    if (json.containsKey('storyLogs')) {
+      storyLogs = List<String>.from(json['storyLogs']);
+    }
+    if (json.containsKey('gamePlayTime')) {
+      int seconds = json['gamePlayTime'];
+      gamePlayTime = Duration(seconds: seconds);
+      gameStartTime = DateTime.now().subtract(gamePlayTime);
     }
   }
 
@@ -1074,6 +1153,21 @@ class GameState extends ChangeNotifier {
       if (saveData['narrativeSystem'] != null) {
         narrativeSystem.fromJson(saveData['narrativeSystem']);
         _log('Loaded narrative system state');
+      }
+
+      // 添加故事系统数据载入
+      if (saveData.containsKey('storySystem')) {
+        storySystem.fromJson(saveData['storySystem']);
+      }
+
+      if (saveData.containsKey('storyLogs')) {
+        storyLogs = List<String>.from(saveData['storyLogs']);
+      }
+
+      if (saveData.containsKey('gamePlayTime')) {
+        int seconds = saveData['gamePlayTime'];
+        gamePlayTime = Duration(seconds: seconds);
+        gameStartTime = DateTime.now().subtract(gamePlayTime);
       }
 
       _log('Game loaded successfully');

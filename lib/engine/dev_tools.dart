@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../models/game_state.dart';
 import '../config/game_settings.dart';
 import '../models/world_system.dart';
+import '../models/game_event.dart' as game_event;
 
 /// 开发者工具类，提供各种调试和测试功能
 class DevTools {
@@ -256,6 +257,194 @@ class DevTools {
       print('玩家位置: ${gameState.worldSystem.position}');
       print('水量: ${gameState.worldSystem.water}');
       print('背包内容: ${gameState.pathSystem.outfit}');
+    }
+  }
+
+  /// 触发故事系统事件（用于测试）- 分成了两个独立的测试函数
+  static void triggerStoryEvent(GameState gameState) {
+    if (kDebugMode) {
+      print('请选择要测试的故事事件类型...');
+      print('- 陌生人事件请使用: triggerStrangerEvent(gameState)');
+      print('- 进度事件请使用: triggerProgressEvent(gameState)');
+
+      // 默认触发陌生人事件
+      triggerStrangerEvent(gameState);
+    }
+  }
+
+  /// 专门测试陌生人事件系列
+  static void triggerStrangerEvent(GameState gameState) {
+    if (kDebugMode) {
+      print('触发陌生人事件系列测试...');
+
+      // 确保火堆已点燃
+      if (gameState.room is! Map<String, dynamic>) {
+        gameState.room = <String, dynamic>{};
+      }
+      gameState.room['fire'] = 1;
+      gameState.room['temperature'] = 'warm';
+
+      // 设置游戏时间（确保满足条件）
+      gameState.gameStartTime =
+          DateTime.now().subtract(const Duration(minutes: 15));
+      gameState.gamePlayTime = const Duration(minutes: 15);
+
+      print('游戏时间: ${gameState.gamePlayTime.inMinutes}分钟');
+      print('火堆状态: ${gameState.room['fire']}');
+
+      // 根据陌生人标记状态决定操作
+      bool strangerArrived =
+          gameState.storySystem.storyFlags['strangerArrived'] ?? false;
+
+      if (strangerArrived) {
+        // 如果陌生人已到达，重置标记以重新测试
+        gameState.storySystem.storyFlags['strangerArrived'] = false;
+        // 同时重置相关的后续事件标记
+        gameState.storySystem.storyFlags['buildingHut'] = false;
+        gameState.storySystem.storyFlags['villageStarted'] = false;
+        print('已重置陌生人事件标记和相关后续事件');
+        gameState.notifyListeners(); // 确保UI更新
+        return;
+      }
+
+      // 尝试触发陌生人事件
+      print('正在触发陌生人事件...');
+      // 使用公共方法checkStoryProgress代替直接调用私有方法
+      gameState.storySystem.checkStoryProgress();
+
+      // 检查事件是否已触发
+      if (gameState.storySystem.currentEvent != null) {
+        print('成功触发陌生人事件!');
+        final event = gameState.storySystem.currentEvent!;
+
+        // 安全地获取事件标题和描述
+        String title = '未知事件';
+        String description = '无描述';
+
+        final titleValue = event['title'];
+        final descValue = event['description'];
+
+        if (titleValue != null) {
+          title = titleValue.toString();
+        }
+        if (descValue != null) {
+          description = descValue.toString();
+        }
+
+        print('标题: $title');
+        print('内容: $description');
+      } else {
+        print('触发陌生人事件失败，请检查故事系统');
+      }
+
+      // 确保更新UI
+      gameState.notifyListeners();
+    }
+  }
+
+  /// 测试基于进度的故事事件（建筑数量、资源数量等）
+  static void triggerProgressEvent(GameState gameState) {
+    if (kDebugMode) {
+      print('测试基于进度的故事事件...');
+
+      // 获取当前状态
+      int hutCount = gameState.getBuildingCount('hut') ?? 0;
+      int trapCount = gameState.getBuildingCount('trap') ?? 0;
+      int tradingPostCount = gameState.getBuildingCount('trading post') ?? 0;
+      int storeOpened = gameState.storeOpened ? 1 : 0;
+
+      // 显示当前游戏状态
+      print('当前游戏状态:');
+      print('- 小屋数量: $hutCount');
+      print('- 陷阱数量: $trapCount');
+      print('- 交易所: $tradingPostCount');
+      print('- 商店已开放: $storeOpened');
+      print('- 人口总数: ${gameState.population['total'] ?? 0}');
+
+      // 创建必要的进度条件
+      bool canTriggerHutEvent =
+          gameState.storySystem.storyFlags['buildingHut'] != true &&
+              hutCount > 0;
+      bool canTriggerVillageEvent =
+          gameState.storySystem.storyFlags['villageStarted'] != true &&
+              hutCount >= 3;
+      bool canTriggerTradingEvent =
+          gameState.storySystem.storyFlags['tradingPostBuilt'] != true &&
+              trapCount >= 5 &&
+              hutCount >= 3;
+      bool canTriggerMinersEvent =
+          gameState.storySystem.storyFlags['minersArrived'] != true &&
+              tradingPostCount > 0 &&
+              (gameState.population['total'] ?? 0) >= 10;
+
+      // 检查下一个可能触发的事件并手动设置条件
+      if (canTriggerHutEvent) {
+        print('条件满足: 可以触发小屋建造事件');
+        // 模拟小屋建造事件的条件，然后通过公共方法触发
+        gameState.addResource('wood', 100);
+        if (gameState.room['buildings'] is! Map<String, dynamic>) {
+          gameState.room['buildings'] = <String, dynamic>{};
+        }
+        gameState.room['buildings']['hut'] = 1;
+        gameState.storySystem.checkStoryProgress();
+      } else if (canTriggerVillageEvent) {
+        print('条件满足: 可以触发村庄建设事件');
+        // 模拟村庄建设事件的条件
+        if (gameState.room['buildings'] is! Map<String, dynamic>) {
+          gameState.room['buildings'] = <String, dynamic>{};
+        }
+        gameState.room['buildings']['hut'] = 3;
+        gameState.storySystem.checkStoryProgress();
+      } else if (canTriggerTradingEvent) {
+        print('条件满足: 可以触发交易所建设事件');
+        // 模拟交易所建设事件的条件
+        if (gameState.room['buildings'] is! Map<String, dynamic>) {
+          gameState.room['buildings'] = <String, dynamic>{};
+        }
+        gameState.room['buildings']['trap'] = 5;
+        gameState.room['buildings']['hut'] = 3;
+        gameState.storySystem.checkStoryProgress();
+      } else if (canTriggerMinersEvent) {
+        print('条件满足: 可以触发矿工到达事件');
+        // 模拟矿工到达事件的条件
+        if (gameState.room['buildings'] is! Map<String, dynamic>) {
+          gameState.room['buildings'] = <String, dynamic>{};
+        }
+        gameState.room['buildings']['trading post'] = 1;
+        if (gameState.population is! Map<String, dynamic>) {
+          gameState.population = <String, dynamic>{};
+        }
+        gameState.population['total'] = 10;
+        gameState.storySystem.checkStoryProgress();
+      } else {
+        print('无法触发下一个进度事件，条件不满足');
+        print('提示: 尝试增加小屋、陷阱或人口数量');
+
+        // 添加一些资源以帮助玩家测试
+        gameState.addResource('wood', 200);
+        gameState.addResource('fur', 100);
+        print('已添加一些资源以帮助测试: 木头x200, 皮毛x100');
+      }
+
+      // 检查事件是否已触发
+      if (gameState.storySystem.currentEvent != null) {
+        print('成功触发事件!');
+        final event = gameState.storySystem.currentEvent!;
+
+        // 安全地获取事件标题
+        String title = '未知事件';
+        final titleValue = event['title'];
+        if (titleValue != null) {
+          title = titleValue.toString();
+        }
+
+        print('标题: $title');
+      } else {
+        print('没有触发任何事件');
+      }
+
+      // 确保UI更新
+      gameState.notifyListeners();
     }
   }
 }
