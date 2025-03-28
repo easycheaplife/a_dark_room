@@ -49,8 +49,6 @@ class _WorldScreenState extends State<WorldScreen> {
   String _statusMessage = '';
   bool _canMove = true;
   bool _isLoading = true; // 添加加载状态标志
-  List<Widget> _cachedTiles = []; // 缓存瓦片以减少重建
-  Size _lastSize = Size.zero; // 跟踪最后的视口大小
   int _lastPlayerX = -1; // 跟踪最后的玩家位置X
   int _lastPlayerY = -1; // 跟踪最后的玩家位置Y
 
@@ -569,7 +567,6 @@ class _WorldScreenState extends State<WorldScreen> {
 
       // 如果玩家位置变化了，清除瓦片缓存
       if (positionChanged) {
-        _cachedTiles = [];
         _lastPlayerX = widget.worldSystem.position[0];
         _lastPlayerY = widget.worldSystem.position[1];
       }
@@ -586,5 +583,123 @@ class _WorldScreenState extends State<WorldScreen> {
     setState(() {
       _canMove = true;
     });
+  }
+}
+
+class NarrativeManager {
+  final GameState gameState;
+
+  // 添加位置事件映射
+  final Map<String, dynamic> locationEvents = {
+    'cave': {
+      'title': '洞穴',
+      'descriptions': ['一个黑暗的洞穴，墙壁上有奇怪的标记。', '潮湿的洞穴，有水滴从顶部落下。', '洞穴深处传来奇怪的声音。'],
+      'events': [
+        {
+          'name': '发现矿物',
+          'description': '你发现了一些珍贵的矿物。',
+          'chance': 0.6,
+          'outcome': {
+            'resources': {'iron': 3, 'coal': 2}
+          }
+        },
+        {
+          'name': '遭遇生物',
+          'description': '一个黑暗的生物从阴影中爬出。',
+          'chance': 0.3,
+          'outcome': {'combat': true, 'enemy': 'cave beast'}
+        }
+      ]
+    },
+    'forest': {
+      'title': '森林',
+      'descriptions': ['茂密的树林，充满了生命。', '阳光透过树叶洒落在地面上。', '森林里充满了野生动物的声音。'],
+      'events': [
+        {
+          'name': '采集木材',
+          'description': '你找到了一些可用的木材。',
+          'chance': 0.7,
+          'outcome': {
+            'resources': {'wood': 5}
+          }
+        },
+        {
+          'name': '遭遇狼群',
+          'description': '一群狼正在接近你。',
+          'chance': 0.4,
+          'outcome': {'combat': true, 'enemy': 'wolf'}
+        }
+      ]
+    }
+  };
+
+  NarrativeManager(this.gameState);
+
+  // 处理位置叙事
+  Map<String, dynamic>? getLocationNarrative(String locationType) {
+    if (!locationEvents.containsKey(locationType)) return null;
+
+    var location = locationEvents[locationType]!;
+    var descriptions = location['descriptions'] as List<String>;
+
+    // 随机选择一个描述
+    String description = descriptions[Random().nextInt(descriptions.length)];
+
+    // 随机选择一个事件
+    List<Map<String, dynamic>> events = location['events'];
+    List<Map<String, dynamic>> possibleEvents = [];
+
+    for (var event in events) {
+      double chance = event['chance'];
+      if (Random().nextDouble() <= chance) {
+        possibleEvents.add(event);
+      }
+    }
+
+    Map<String, dynamic>? selectedEvent;
+    if (possibleEvents.isNotEmpty) {
+      selectedEvent = possibleEvents[Random().nextInt(possibleEvents.length)];
+    }
+
+    return {
+      'title': location['title'],
+      'description': description,
+      'event': selectedEvent,
+    };
+  }
+
+  // 应用事件结果
+  void applyEventOutcome(Map<String, dynamic> outcome) {
+    // 添加资源
+    if (outcome.containsKey('resources')) {
+      Map<String, int> resources = outcome['resources'];
+      resources.forEach((resource, amount) {
+        gameState.addResource(resource, amount);
+      });
+    }
+
+    // 处理战斗
+    if (outcome.containsKey('combat') && outcome['combat'] == true) {
+      if (outcome.containsKey('enemy')) {
+        String enemyType = outcome['enemy'];
+        gameState.combatSystem.startCombat(enemyType, gameState);
+      }
+    }
+
+    // 添加任何其他效果
+    if (outcome.containsKey('effects')) {
+      Map<String, dynamic> effects = outcome['effects'];
+      effects.forEach((key, value) {
+        switch (key) {
+          case 'happiness':
+            gameState.population['happiness'] += value;
+            break;
+          case 'population':
+            gameState.population['total'] += value;
+            break;
+          // 添加其他效果处理
+        }
+      });
+    }
   }
 }

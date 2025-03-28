@@ -855,4 +855,322 @@ class GameSettings {
       print('当前语言: ${languageManager.currentLanguage}');
     }
   }
+
+  // 获取多语言位置事件配置
+  static Map<String, dynamic> getLocationEvents() {
+    return {
+      'house': {
+        'title': {
+          'en': 'Abandoned House',
+          'zh': '废弃房屋',
+        },
+        'description': {
+          'en': 'A small abandoned house sits at the edge of the village.',
+          'zh': '一座小型废弃房屋坐落在村庄边缘。',
+        },
+        'events': [
+          {
+            'id': 'house_supplies',
+            'title': {
+              'en': 'Search for Supplies',
+              'zh': '搜寻物资',
+            },
+            'description': {
+              'en': 'You search through the dusty rubble and broken furniture.',
+              'zh': '你在布满灰尘的瓦砾和破碎的家具中搜寻。',
+            },
+            'chance': 0.6,
+            'outcome': {
+              'resources': {
+                'wood': 5,
+                'cloth': 3,
+              },
+            },
+          },
+          {
+            'id': 'house_stranger',
+            'title': {
+              'en': 'Stranger Inside',
+              'zh': '房内的陌生人',
+            },
+            'description': {
+              'en': 'A stranger is resting inside, seemingly injured.',
+              'zh': '一位陌生人在里面休息，似乎受了伤。',
+            },
+            'chance': 0.3,
+            'outcome': {
+              'population': 1,
+              'happiness': 5,
+            },
+          },
+        ],
+      },
+      'cave': {
+        'title': {
+          'en': 'Dark Cave',
+          'zh': '黑暗洞穴',
+        },
+        'description': {
+          'en': 'A dark cave opens into the side of a cliff face.',
+          'zh': '一个黑暗的洞穴开口在悬崖峭壁上。',
+        },
+        'events': [
+          {
+            'id': 'cave_minerals',
+            'title': {
+              'en': 'Mine for Resources',
+              'zh': '开采资源',
+            },
+            'description': {
+              'en': 'You carefully extract minerals from the cave walls.',
+              'zh': '你小心地从洞穴墙壁中提取矿物。',
+            },
+            'chance': 0.7,
+            'outcome': {
+              'resources': {
+                'iron': 3,
+                'coal': 2,
+              },
+            },
+          },
+          {
+            'id': 'cave_beast',
+            'title': {
+              'en': 'Cave Beast',
+              'zh': '洞穴野兽',
+            },
+            'description': {
+              'en': 'A large creature lunges at you from the darkness!',
+              'zh': '一个大型生物从黑暗中向你扑来！',
+            },
+            'chance': 0.2,
+            'outcome': {
+              'combat': true,
+              'enemy': 'cave beast',
+              'strength': 8,
+            },
+          },
+        ],
+      },
+      'city': {
+        'title': {
+          'en': 'Ruined City',
+          'zh': '废墟城市',
+        },
+        'description': {
+          'en': 'The remnants of a once-great city stretch before you.',
+          'zh': '一座曾经伟大的城市的残余在你面前延伸。',
+        },
+        'events': [
+          {
+            'id': 'city_scavenge',
+            'title': {
+              'en': 'Scavenge for Technology',
+              'zh': '搜寻技术',
+            },
+            'description': {
+              'en':
+                  'You search through abandoned buildings for useful technology.',
+              'zh': '你在废弃的建筑中寻找有用的技术。',
+            },
+            'chance': 0.5,
+            'outcome': {
+              'resources': {
+                'steel': 2,
+                'circuits': 1,
+              },
+            },
+          },
+          {
+            'id': 'city_survivors',
+            'title': {
+              'en': 'Survivors',
+              'zh': '幸存者',
+            },
+            'description': {
+              'en':
+                  'You discover a small group of survivors hiding in the ruins.',
+              'zh': '你在废墟中发现了一小群躲藏的幸存者。',
+            },
+            'chance': 0.3,
+            'outcome': {
+              'population': 3,
+              'happiness': -2, // Initial distrust
+            },
+          },
+        ],
+      },
+    };
+  }
+
+  // 获取多语言随机事件配置
+  static Map<String, dynamic> getRandomEvents() {
+    return {
+      'stranger': {
+        'title': {
+          'en': 'Mysterious Stranger',
+          'zh': '神秘陌生人',
+        },
+        'description': {
+          'en': 'A hooded figure approaches your settlement.',
+          'zh': '一个戴着兜帽的人接近了你的定居点。',
+        },
+        'chance': 0.1,
+        'oneTime': false,
+        'requirements': {
+          'resources': {
+            'wood': 10,
+            'food': 5,
+          },
+          'location': 'room',
+        },
+        'choices': [
+          {
+            'id': 'welcome',
+            'text': {
+              'en': 'Welcome them in',
+              'zh': '欢迎他们',
+            },
+            'effects': {
+              'resources': {
+                'food': -5,
+                'medicine': 1,
+              },
+              'population': 1,
+              'happiness': 5,
+            },
+          },
+          {
+            'id': 'ignore',
+            'text': {
+              'en': 'Ignore them',
+              'zh': '忽略他们',
+            },
+            'effects': {
+              'happiness': -2,
+            },
+          },
+          {
+            'id': 'attack',
+            'text': {
+              'en': 'Attack',
+              'zh': '攻击',
+            },
+            'effects': {
+              'combat': true,
+              'enemy': 'stranger',
+              'strength': 5,
+            },
+          },
+        ],
+      },
+      'trader': {
+        'title': {
+          'en': 'Wandering Trader',
+          'zh': '流浪商人',
+        },
+        'description': {
+          'en': 'A trader arrives with goods to barter.',
+          'zh': '一位商人带着物品前来交易。',
+        },
+        'chance': 0.15,
+        'oneTime': false,
+        'requirements': {
+          'buildings': {
+            'hut': 1,
+          },
+          'location': 'room',
+        },
+        'choices': [
+          {
+            'id': 'trade_food',
+            'text': {
+              'en': 'Trade for food',
+              'zh': '交换食物',
+            },
+            'effects': {
+              'resources': {
+                'fur': -10,
+                'food': 15,
+              },
+            },
+          },
+          {
+            'id': 'trade_weapons',
+            'text': {
+              'en': 'Trade for weapons',
+              'zh': '交换武器',
+            },
+            'effects': {
+              'resources': {
+                'wood': -20,
+                'steel': -5,
+              },
+              'buildings': {
+                'weapons': 1,
+              },
+            },
+          },
+          {
+            'id': 'dismiss',
+            'text': {
+              'en': 'Dismiss',
+              'zh': '拒绝',
+            },
+            'effects': {
+              'tradeAvailable': false,
+            },
+          },
+        ],
+      },
+      'storm': {
+        'title': {
+          'en': 'Violent Storm',
+          'zh': '剧烈风暴',
+        },
+        'description': {
+          'en': 'Dark clouds gather. A storm is coming.',
+          'zh': '乌云密布。风暴即将来临。',
+        },
+        'chance': 0.1,
+        'oneTime': false,
+        'requirements': {
+          'location': 'room',
+        },
+        'choices': [
+          {
+            'id': 'strengthen',
+            'text': {
+              'en': 'Strengthen defenses',
+              'zh': '加强防御',
+            },
+            'effects': {
+              'resources': {
+                'wood': -10,
+              },
+              'delayedRewards': {
+                'time': 10, // minutes
+                'resources': {
+                  'wood': 5,
+                },
+              },
+            },
+          },
+          {
+            'id': 'weather',
+            'text': {
+              'en': 'Weather the storm',
+              'zh': '挺过风暴',
+            },
+            'effects': {
+              'buildings': {
+                'hut': -1,
+              },
+              'happiness': -5,
+            },
+          },
+        ],
+      },
+    };
+  }
 }

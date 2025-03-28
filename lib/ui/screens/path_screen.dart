@@ -158,17 +158,19 @@ class _PathScreenState extends State<PathScreen> {
         bool success = widget.gameState.embarkonPath();
 
         // 关闭加载对话框
-        Navigator.of(context).pop();
+        if (mounted) {
+          Navigator.of(context).pop();
 
-        if (success) {
-          if (kDebugMode) {
-            print('出发成功，正在前往世界');
-          }
-        } else {
-          _showMessage(GameSettings.languageManager
-              .get('cannot_embark', category: 'path'));
-          if (kDebugMode) {
-            print('出发失败');
+          if (success) {
+            if (kDebugMode) {
+              print('出发成功，正在前往世界');
+            }
+          } else {
+            _showMessage(GameSettings.languageManager
+                .get('cannot_embark', category: 'path'));
+            if (kDebugMode) {
+              print('出发失败');
+            }
           }
         }
       });

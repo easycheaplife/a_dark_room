@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/game_settings.dart';
 import 'world_system.dart';
 import 'path_system.dart';
+import 'narrative_system.dart';
 
 class GameState extends ChangeNotifier {
   // 日志工具方法，只在调试模式下打印
@@ -220,6 +221,9 @@ class GameState extends ChangeNotifier {
   // 添加路径系统
   PathSystem pathSystem = PathSystem();
 
+  // 添加叙事系统
+  late NarrativeSystem narrativeSystem;
+
   // 初始化事件系统
   void initEventSystem() {
     eventTimer?.cancel();
@@ -402,6 +406,9 @@ class GameState extends ChangeNotifier {
     // 初次运行时更新配方翻译
     craftingSystem.updateAllRecipeTranslations();
 
+    // 初始化叙事系统
+    initNarrativeSystem();
+
     // ... 其他初始化代码 ...
   }
 
@@ -534,6 +541,7 @@ class GameState extends ChangeNotifier {
       'combatSystem': combatSystem.toJson(),
       'worldSystem': worldSystem.toJson(),
       'pathSystem': pathSystem.toJson(),
+      'narrativeSystem': narrativeSystem.toJson(),
     };
   }
 
@@ -578,6 +586,9 @@ class GameState extends ChangeNotifier {
     }
     if (json.containsKey('pathSystem')) {
       pathSystem.fromJson(json['pathSystem']);
+    }
+    if (json.containsKey('narrativeSystem')) {
+      narrativeSystem.fromJson(json['narrativeSystem']);
     }
   }
 
@@ -1059,6 +1070,12 @@ class GameState extends ChangeNotifier {
         _log('Loaded path system state');
       }
 
+      // 加载叙事系统状态
+      if (saveData['narrativeSystem'] != null) {
+        narrativeSystem.fromJson(saveData['narrativeSystem']);
+        _log('Loaded narrative system state');
+      }
+
       _log('Game loaded successfully');
       notifyListeners();
       return true;
@@ -1455,5 +1472,54 @@ class GameState extends ChangeNotifier {
     craftingSystem.updateAllRecipeTranslations();
     // 通知监听器更新UI
     notifyListeners();
+  }
+
+  // 初始化叙事系统
+  void initNarrativeSystem() {
+    narrativeSystem = NarrativeSystem(this);
+  }
+
+  // 添加处理位置叙事的方法
+  Map<String, dynamic>? getLocationNarrative(String locationType) {
+    return narrativeSystem.getLocationNarrative(locationType);
+  }
+
+  // 添加获取随机事件的方法
+  void checkForRandomEvent() {
+    // 根据一定间隔或条件检查是否触发随机事件
+    if (!_canTriggerEventNow()) return;
+
+    var randomEvent = narrativeSystem.getRandomEvent();
+    if (randomEvent != null) {
+      // 创建一个兼容的GameEvent对象
+      currentEvent = GameEvent(
+        id: randomEvent['id'],
+        title: randomEvent['title'],
+        description: randomEvent['description'],
+        requirements: {}, // 空的要求，因为它已经被触发
+        effects: {}, // 效果将通过选择应用
+        choices: randomEvent['choices'] != null
+            ? (randomEvent['choices'] as List)
+                .map((c) => Choice(
+                      text: c['text'],
+                      effects: Map<String, dynamic>.from(c['effects']),
+                    ))
+                .toList()
+            : null,
+      );
+
+      // 触发UI更新以显示事件
+      notifyListeners();
+    }
+  }
+
+  // 检查是否可以触发事件的辅助方法
+  bool _canTriggerEventNow() {
+    // 玩家需要在房间中，且火堆已经点燃
+    if (currentLocation != 'room' || room['fire'] < 1) return false;
+
+    // 随机概率触发，增加一些随机性
+    final random = Random();
+    return random.nextDouble() < 0.1;
   }
 }
