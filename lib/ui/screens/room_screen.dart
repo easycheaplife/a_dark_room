@@ -1,27 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../../models/game_state.dart';
-import '../../models/event_system.dart' as event_system;
 import '../../config/game_settings.dart';
 import '../../engine/dev_tools.dart';
 import '../../config/language_manager.dart';
-import '../../models/game_event.dart' as game_event;
-
-/// 类型转换助手函数 - 从event_system转换到game_event
-game_event.Choice _convertToGameEventChoice(event_system.Choice choice) {
-  return game_event.Choice(
-    text: choice.text,
-    effects: choice.effects,
-  );
-}
-
-/// 类型转换助手函数 - 从game_event转换到event_system
-event_system.Choice _convertToEventSystemChoice(game_event.Choice choice) {
-  return event_system.Choice(
-    text: choice.text,
-    effects: choice.effects,
-  );
-}
 
 /// 房间屏幕 - 游戏的起始区域
 class RoomScreen extends StatefulWidget {
@@ -93,15 +75,6 @@ class _RoomScreenState extends State<RoomScreen> {
         _logs.removeAt(0);
       }
     });
-  }
-
-  // 添加处理故事事件选择的方法
-  void _handleStoryChoice(game_event.Choice choice) {
-    widget.gameState.handleStoryChoice(choice);
-    Navigator.of(context).pop();
-
-    // 更新状态以反映变化
-    _updateState();
   }
 
   // 生火
@@ -1137,95 +1110,56 @@ class _RoomScreenState extends State<RoomScreen> {
 
   // 添加事件对话框显示
   void _showEventDialog() {
-    if (widget.gameState.currentEvent == null) return;
+    final Map<String, dynamic>? event =
+        widget.gameState.storySystem.currentEvent;
+    if (event == null) return;
 
-    dynamic event = widget.gameState.currentEvent!;
-    bool isGameEvent = event is game_event.GameEvent;
+    // 安全地获取事件属性
+    String title = '未知事件';
+    String description = '无描述';
+    List<Map<String, dynamic>> choices = <Map<String, dynamic>>[];
+
+    final titleValue = event['title'];
+    final descValue = event['description'];
+    final choicesValue = event['choices'];
+
+    if (titleValue != null) {
+      title = titleValue.toString();
+    }
+    if (descValue != null) {
+      description = descValue.toString();
+    }
+    if (choicesValue is List) {
+      choices = choicesValue.map((dynamic choice) {
+        if (choice is Map<String, dynamic>) {
+          return choice;
+        }
+        return <String, dynamic>{};
+      }).toList();
+    }
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey.shade900,
-        title: Text(
-          isGameEvent ? event.title : (event['title'] as String? ?? '未知事件'),
-          style: const TextStyle(color: Colors.white),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              isGameEvent
-                  ? event.description
-                  : (event['description'] as String? ?? '无描述'),
-              style: TextStyle(color: Colors.grey.shade300),
-            ),
-            if ((isGameEvent && event.choices.isNotEmpty) ||
-                (!isGameEvent && event['choices'] != null)) ...[
-              const SizedBox(height: 16),
-              ...(isGameEvent
-                      ? event.choices
-                      : (event['choices'] as List? ?? []))
-                  .map((choice) {
-                // 根据事件ID判断是否是故事事件
-                String eventId = isGameEvent
-                    ? (event.id ?? '')
-                    : (event['id'] as String? ?? '');
-                bool isStoryEvent = (eventId.startsWith('stranger_') ||
-                    eventId.startsWith('build_') ||
-                    eventId.startsWith('village_'));
-
-                bool isChoiceObject = choice is game_event.Choice;
-                String choiceText = isChoiceObject
-                    ? choice.text
-                    : (choice['text'] as String? ?? '无选项');
-                Map<String, dynamic> effects = isChoiceObject
-                    ? choice.effects
-                    : (choice['effects'] as Map<String, dynamic>? ?? {});
-
-                // 普通事件需要检查条件
-                bool canChoose = isStoryEvent
-                    ? true
-                    : widget.gameState.eventSystem.canChoose(
-                        event_system.Choice(
-                          text: choiceText,
-                          effects: effects,
-                        ),
-                        widget.gameState);
-
-                // 根据事件类型调用不同的处理方法
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: ElevatedButton(
-                    onPressed: canChoose
-                        ? () {
-                            if (isStoryEvent) {
-                              widget.gameState.storySystem
-                                  .handleStoryChoice(choice);
-                              Navigator.of(context).pop();
-                            } else {
-                              widget.gameState
-                                  .makeEventChoice(event_system.Choice(
-                                text: choiceText,
-                                effects: effects,
-                              ));
-                              Navigator.of(context).pop();
-                            }
-                          }
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey.shade800,
-                      minimumSize: const Size(double.infinity, 40),
-                    ),
-                    child: Text(choiceText),
-                  ),
-                );
-              }),
-            ],
-          ],
-        ),
-      ),
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(description),
+          actions: choices.map((Map<String, dynamic> choice) {
+            final String text = choice['text']?.toString() ?? '继续';
+            final Function? callback = choice['callback'] as Function?;
+            return TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                if (callback != null) {
+                  callback();
+                }
+              },
+              child: Text(text),
+            );
+          }).toList(),
+        );
+      },
     );
   }
 
@@ -1863,43 +1797,6 @@ class _RoomScreenState extends State<RoomScreen> {
   void _changeLanguage(String languageCode) {
     GameSettings.languageManager.setLanguage(languageCode);
     _showMessage(GameSettings.languageManager.get('language_changed'));
-  }
-
-  // 构建开发者工具栏
-  // ignore: unused_element
-  Widget _buildDevToolsBar() {
-    return Visibility(
-      visible: (kDebugMode || GameSettings.devMode),
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        color: Colors.grey.shade900,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            if (kDebugMode || GameSettings.devMode) ...[
-              // 快速跳转到路径系统
-              _buildDevButton(
-                '路径系统',
-                () => DevTools.quickJumpToPath(widget.gameState),
-              ),
-              // ... existing code ...
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  // 构建单个开发者按钮
-  Widget _buildDevButton(String text, VoidCallback onPressed) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.grey.shade800,
-        minimumSize: const Size(double.infinity, 40),
-      ),
-      child: Text(text),
-    );
   }
 
   // 添加测试故事事件的逻辑

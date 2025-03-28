@@ -4,7 +4,7 @@ import '../config/game_settings.dart';
 import 'package:flutter/foundation.dart';
 
 /// 故事系统，管理游戏中的核心故事事件
-class StorySystem {
+class StorySystem extends ChangeNotifier {
   final GameState gameState;
   final Random _random = Random();
 
@@ -12,7 +12,7 @@ class StorySystem {
   Map<String, dynamic>? _currentEvent;
 
   // 故事标记，用于跟踪进度
-  Map<String, bool> storyFlags = {
+  final Map<String, bool> storyFlags = <String, bool>{
     'strangerArrived': false, // 陌生人到来事件已触发
     'buildingHut': false, // 建造小屋事件已触发
     'villageStarted': false, // 村庄开始建设
@@ -35,12 +35,12 @@ class StorySystem {
   // 设置当前事件
   set currentEvent(Map<String, dynamic>? event) {
     _currentEvent = event;
-    gameState.notifyListeners();
+    notifyListeners();
   }
 
   // 序列化为JSON
   Map<String, dynamic> toJson() {
-    return {
+    return <String, dynamic>{
       'storyFlags': storyFlags,
     };
   }
@@ -48,10 +48,11 @@ class StorySystem {
   // 从JSON加载
   void fromJson(Map<String, dynamic> json) {
     if (json.containsKey('storyFlags')) {
-      Map<String, dynamic> flags = json['storyFlags'];
-      flags.forEach((key, value) {
-        if (storyFlags.containsKey(key)) {
-          storyFlags[key] = value;
+      final Map<dynamic, dynamic> flags =
+          json['storyFlags'] as Map<dynamic, dynamic>;
+      flags.forEach((dynamic key, dynamic value) {
+        if (key is String && storyFlags.containsKey(key)) {
+          storyFlags[key] = value as bool;
         }
       });
     }
@@ -60,16 +61,16 @@ class StorySystem {
   /// 检查并触发故事事件
   void checkStoryProgress() {
     // 确保故事标记非空
-    final strangerArrived = storyFlags['strangerArrived'] ?? false;
-    final buildingHut = storyFlags['buildingHut'] ?? false;
-    final villageStarted = storyFlags['villageStarted'] ?? false;
-    final tradingPostBuilt = storyFlags['tradingPostBuilt'] ?? false;
-    final minersArrived = storyFlags['minersArrived'] ?? false;
-    final steelworksBuilt = storyFlags['steelworksBuilt'] ?? false;
-    final expeditionReady = storyFlags['expeditionReady'] ?? false;
-    final foundShip = storyFlags['foundShip'] ?? false;
-    final unlockedAlienTech = storyFlags['unlockedAlienTech'] ?? false;
-    final endgameReady = storyFlags['endgameReady'] ?? false;
+    final bool strangerArrived = storyFlags['strangerArrived'] ?? false;
+    final bool buildingHut = storyFlags['buildingHut'] ?? false;
+    final bool villageStarted = storyFlags['villageStarted'] ?? false;
+    final bool tradingPostBuilt = storyFlags['tradingPostBuilt'] ?? false;
+    final bool minersArrived = storyFlags['minersArrived'] ?? false;
+    final bool steelworksBuilt = storyFlags['steelworksBuilt'] ?? false;
+    final bool expeditionReady = storyFlags['expeditionReady'] ?? false;
+    final bool foundShip = storyFlags['foundShip'] ?? false;
+    final bool unlockedAlienTech = storyFlags['unlockedAlienTech'] ?? false;
+    final bool endgameReady = storyFlags['endgameReady'] ?? false;
 
     if (!strangerArrived && _canTriggerStranger()) {
       _triggerStrangerArrival();
@@ -86,7 +87,6 @@ class StorySystem {
       return;
     }
 
-    // 新增的故事触发检查
     if (villageStarted && !tradingPostBuilt && _canBuildTradingPost()) {
       _triggerTradingPostBuilt();
       return;
@@ -107,7 +107,6 @@ class StorySystem {
       return;
     }
 
-    // 末游条件检查
     if (expeditionReady && !foundShip && _hasDiscoveredShip()) {
       _triggerFoundShip();
       return;
@@ -128,13 +127,14 @@ class StorySystem {
   bool _canTriggerStranger() {
     // 在调试模式下，总是返回true以便测试
     if (kDebugMode && gameState.gamePlayTime.inSeconds >= 60) {
-      print("调试模式下触发陌生人事件");
+      debugPrint("调试模式下触发陌生人事件");
       return true;
     }
 
     // 普通游戏模式下的逻辑
     // 需要火堆点燃
-    if (gameState.room['fire'] < 1) return false;
+    final int fireLevel = (gameState.room['fire'] as num?)?.toInt() ?? 0;
+    if (fireLevel < 1) return false;
 
     // 需要游戏时间超过60秒
     if (gameState.gamePlayTime.inSeconds < 60) return false;
@@ -145,74 +145,96 @@ class StorySystem {
 
   // 是否有足够资源建造小屋
   bool _hasRequiredResourcesForHut() {
-    return (gameState.resources['wood'] ?? 0) >= 50;
+    final int woodAmount = gameState.resources['wood'] as int;
+    return woodAmount >= 50;
   }
 
   // 是否已建造小屋
   bool _hasBuiltHut() {
     // 返回true如果小屋等级 > 0
-    return (gameState.getBuildingCount('hut') ?? 0) > 0;
+    final int hutCount = gameState.getBuildingCount('hut');
+    return hutCount > 0;
   }
 
   // 新增的触发条件检查方法
   bool _canBuildTradingPost() {
-    // 检查是否有足够的资源和建筑数量来建造交易所
-    return (gameState.resources['wood'] ?? 0) >= 100 &&
-        (gameState.resources['fur'] ?? 0) >= 50 &&
-        (gameState.getBuildingCount('hut') ?? 0) >= 3 &&
-        (gameState.getBuildingCount('trap') ?? 0) >= 5;
+    final int woodAmount = gameState.resources['wood'] as int;
+    final int furAmount = gameState.resources['fur'] as int;
+    final int hutCount = gameState.getBuildingCount('hut');
+    final int trapCount = gameState.getBuildingCount('trap');
+
+    return woodAmount >= 100 &&
+        furAmount >= 50 &&
+        hutCount >= 3 &&
+        trapCount >= 5;
   }
 
   bool _hasEnoughResourcesForMiners() {
-    // 检查是否有足够的资源和建筑来吸引矿工
-    return (gameState.resources['cured meat'] ?? 0) >= 100 &&
-        (gameState.resources['leather'] ?? 0) >= 50 &&
-        (gameState.getBuildingCount('trading post') ?? 0) >= 1 &&
-        (gameState.population['total'] ?? 0) >= 10;
+    final int meatAmount = gameState.resources['cured meat'] as int;
+    final int leatherAmount = gameState.resources['leather'] as int;
+    final int tradingPostCount = gameState.getBuildingCount('trading post');
+    final int totalPopulation = gameState.population['total'] as int;
+
+    return meatAmount >= 100 &&
+        leatherAmount >= 50 &&
+        tradingPostCount >= 1 &&
+        totalPopulation >= 10;
   }
 
   bool _canBuildSteelworks() {
-    // 检查是否有足够的资源和建筑来建造钢铁工坊
-    return (gameState.resources['iron'] ?? 0) >= 100 &&
-        (gameState.resources['coal'] ?? 0) >= 50 &&
-        (gameState.getBuildingCount('mine') ?? 0) >= 2 &&
-        (gameState.population['total'] ?? 0) >= 15;
+    final int ironAmount = gameState.resources['iron'] as int;
+    final int coalAmount = gameState.resources['coal'] as int;
+    final int mineCount = gameState.getBuildingCount('mine');
+    final int totalPopulation = gameState.population['total'] as int;
+
+    return ironAmount >= 100 &&
+        coalAmount >= 50 &&
+        mineCount >= 2 &&
+        totalPopulation >= 15;
   }
 
   bool _hasResourcesForExpedition() {
-    // 检查是否有足够的资源和装备来准备远征
-    return (gameState.resources['cured meat'] ?? 0) >= 200 &&
-        (gameState.resources['steel'] ?? 0) >= 100 &&
-        (gameState.resources['medicine'] ?? 0) >= 50 &&
-        (gameState.getBuildingCount('steelworks') ?? 0) >= 1 &&
-        (gameState.population['total'] ?? 0) >= 20;
+    final int meatAmount = gameState.resources['cured meat'] as int;
+    final int steelAmount = gameState.resources['steel'] as int;
+    final int medicineAmount = gameState.resources['medicine'] as int;
+    final int steelworksCount = gameState.getBuildingCount('steelworks');
+    final int totalPopulation = gameState.population['total'] as int;
+
+    return meatAmount >= 200 &&
+        steelAmount >= 100 &&
+        medicineAmount >= 50 &&
+        steelworksCount >= 1 &&
+        totalPopulation >= 20;
   }
 
   // 修复检查是否发现飞船的方法
   bool _hasDiscoveredShip() {
     // 检查是否已经探索足够的世界地图区域和移动次数
-    return gameState.worldSystem.totalMoveCount >= 100 &&
-        gameState.worldSystem.shipLocation != null;
+    final int totalMoveCount = gameState.worldSystem.totalMoveCount;
+    final bool hasShipLocation = gameState.worldSystem.shipLocation != null;
+    return totalMoveCount >= 100 && hasShipLocation;
   }
 
   bool _hasResourcesForAlienTech() {
-    // 检查是否有足够的资源研究外星科技
-    return (gameState.resources['alien alloy'] ?? 0) >= 50 &&
-        (gameState.resources['circuits'] ?? 0) >= 50 &&
-        (gameState.getBuildingCount('workshop') ?? 0) >= 3;
+    final int alloyAmount = gameState.resources['alien alloy'] as int;
+    final int circuitsAmount = gameState.resources['circuits'] as int;
+    final int workshopCount = gameState.getBuildingCount('workshop');
+
+    return alloyAmount >= 50 && circuitsAmount >= 50 && workshopCount >= 3;
   }
 
   bool _isReadyForEndgame() {
-    // 检查是否满足游戏结束条件
-    return (gameState.resources['alien alloy'] ?? 0) >= 100 &&
-        (gameState.resources['advanced tech'] ?? 0) >= 50 &&
-        (gameState.getBuildingCount('spacecraft') ?? 0) >= 1;
+    final int alloyAmount = gameState.resources['alien alloy'] as int;
+    final int techAmount = gameState.resources['advanced tech'] as int;
+    final int spacecraftCount = gameState.getBuildingCount('spacecraft');
+
+    return alloyAmount >= 100 && techAmount >= 50 && spacecraftCount >= 1;
   }
 
   // 触发陌生人到来事件
   void _triggerStrangerArrival() {
     if (kDebugMode) {
-      print("正在创建陌生人事件...");
+      debugPrint("正在创建陌生人事件...");
     }
 
     // 创建事件数据
@@ -236,18 +258,15 @@ class StorySystem {
     // 设置事件
     _currentEvent = eventData;
 
-    // 游戏状态的currentEvent不要直接赋值，通过故事系统更新
-    // gameState.currentEvent = eventData;
-
     // 更新标记
     storyFlags['strangerArrived'] = true;
 
     if (kDebugMode) {
-      print("陌生人事件已创建并设置: ${eventData['title']}");
+      debugPrint("陌生人事件已创建并设置: ${eventData['title']}");
     }
 
     // 确保UI更新
-    gameState.notifyListeners();
+    notifyListeners();
   }
 
   // 陌生人事件选择：问好
@@ -463,7 +482,8 @@ class StorySystem {
     }
     gameState.population['workers']['miner'] =
         (gameState.population['workers']['miner'] ?? 0) + 5;
-    gameState.population['total'] = (gameState.population['total'] as int) + 5;
+    gameState.population['total'] =
+        (gameState.population['total'] as num?)?.toInt() ?? 0 + 5;
 
     if (gameState.room['buildings'] is! Map) {
       gameState.room['buildings'] = {};
@@ -660,7 +680,7 @@ class StorySystem {
     if (choice is Map<String, dynamic>) {
       // 处理Map类型的选择
       if (choice['callback'] != null && choice['callback'] is Function) {
-        Function callback = choice['callback'] as Function;
+        final Function callback = choice['callback'] as Function;
         callback();
       } else if (choice['effects'] != null &&
           choice['effects'] is Map<String, dynamic>) {
