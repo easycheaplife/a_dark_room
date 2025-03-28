@@ -353,7 +353,7 @@ class _RoomScreenState extends State<RoomScreen> {
               List<PopupMenuEntry<String>> items = [];
 
               // 添加基本游戏功能
-              if (widget.gameState.outsideUnlocked) {
+              if (widget.gameState.outsideUnlocked && kDebugMode) {
                 items.add(
                   PopupMenuItem<String>(
                     value: 'outside',
