@@ -84,7 +84,7 @@ class _RoomScreenState extends State<RoomScreen> {
     if (hasWood) {
       widget.gameState.room['fire'] = 1;
       widget.gameState.room['temperature'] = 'warm';
-      widget.gameState.notifyListeners();
+      setState(() {}); // Update UI
       _addLog(GameSettings.languageManager.get('fire_lit', category: 'room'));
     } else {
       _addLog(GameSettings.languageManager
@@ -115,7 +115,7 @@ class _RoomScreenState extends State<RoomScreen> {
             GameSettings.languageManager.get('fire_roaring', category: 'room'));
         widget.gameState.room['temperature'] = 'hot';
       }
-      widget.gameState.notifyListeners();
+      setState(() {}); // Update UI
     } else {
       _addLog(GameSettings.languageManager.get('no_wood', category: 'room'));
     }
@@ -133,7 +133,7 @@ class _RoomScreenState extends State<RoomScreen> {
     }
 
     widget.gameState.addResource('wood', amount);
-    widget.gameState.notifyListeners();
+    setState(() {}); // Update UI
     _addLog(
         GameSettings.languageManager.get('gathered_wood', category: 'room'));
   }
@@ -149,7 +149,7 @@ class _RoomScreenState extends State<RoomScreen> {
       // 检查是否解锁了外部世界
       if (buildingId == 'trap' && !widget.gameState.outsideUnlocked) {
         widget.gameState.outsideUnlocked = true;
-        widget.gameState.notifyListeners();
+        setState(() {}); // Update UI
         _addLog('可以探索外面的世界了。');
       }
 
@@ -317,7 +317,7 @@ class _RoomScreenState extends State<RoomScreen> {
               switch (value) {
                 case 'outside':
                   widget.gameState.currentLocation = 'outside';
-                  widget.gameState.notifyListeners();
+                  setState(() {}); // Update UI
                   break;
                 case 'explore':
                   _explorePathAction();
@@ -357,10 +357,10 @@ class _RoomScreenState extends State<RoomScreen> {
               // 分隔线
               if ((widget.gameState.outsideUnlocked ||
                       widget.gameState.storeOpened) &&
-                  (kDebugMode || GameSettings.DEV_MODE))
+                  (kDebugMode || GameSettings.devMode))
                 const PopupMenuDivider(),
               // 开发者功能
-              if (kDebugMode || GameSettings.DEV_MODE) ...[
+              if (kDebugMode || GameSettings.devMode) ...[
                 PopupMenuItem<String>(
                   value: 'path',
                   child: Text(GameSettings.languageManager
@@ -394,7 +394,7 @@ class _RoomScreenState extends State<RoomScreen> {
               _changeLanguage(languageCode);
             },
             itemBuilder: (BuildContext context) =>
-                LanguageManager.SUPPORTED_LANGUAGES.entries.map((entry) {
+                LanguageManager.supportedLanguages.entries.map((entry) {
               return PopupMenuItem<String>(
                 value: entry.key,
                 child: Row(
@@ -777,7 +777,6 @@ class _RoomScreenState extends State<RoomScreen> {
               true, () {
             setState(() {
               widget.gameState.currentLocation = 'outside';
-              widget.gameState.notifyListeners();
             });
           }),
         _buildActionButton(
@@ -1591,11 +1590,13 @@ class _RoomScreenState extends State<RoomScreen> {
         await widget.gameState.deleteSaveSlot(slotKey);
         _addLog(
             '${GameSettings.languageManager.get('delete_success', category: 'save')} ${slotKey.substring(4)}');
-        await _refreshSaveMenu();
+        if (mounted) {
+          await _refreshSaveMenu();
+        }
       }
     } catch (e) {
       _addLog('删除存档失败: $e');
-      if (context.mounted) {
+      if (mounted) {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
@@ -1760,7 +1761,7 @@ class _RoomScreenState extends State<RoomScreen> {
 
       // 切换到路径界面
       widget.gameState.currentLocation = 'path';
-      widget.gameState.notifyListeners();
+      setState(() {}); // Update UI instead of notifyListeners
 
       if (kDebugMode) {
         print('已进入探索路径');
@@ -1779,5 +1780,41 @@ class _RoomScreenState extends State<RoomScreen> {
   void _changeLanguage(String languageCode) {
     GameSettings.languageManager.setLanguage(languageCode);
     _showMessage(GameSettings.languageManager.get('language_changed'));
+  }
+
+  // 构建开发者工具栏
+  Widget _buildDevToolsBar() {
+    return Visibility(
+      visible: (kDebugMode || GameSettings.devMode),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        color: Colors.grey.shade900,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            if (kDebugMode || GameSettings.devMode) ...[
+              // 快速跳转到路径系统
+              _buildDevButton(
+                '路径系统',
+                () => DevTools.quickJumpToPath(widget.gameState),
+              ),
+              // ... existing code ...
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 构建单个开发者按钮
+  Widget _buildDevButton(String text, VoidCallback onPressed) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.grey.shade800,
+        minimumSize: const Size(double.infinity, 40),
+      ),
+      child: Text(text),
+    );
   }
 }

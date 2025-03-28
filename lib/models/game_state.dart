@@ -902,8 +902,8 @@ class GameState extends ChangeNotifier {
   }
 
   // 添加存档相关字段
-  static const String saveDirectory = GameSettings.SAVE_DIRECTORY;
-  static const int maxSaveSlots = GameSettings.MAX_SAVE_SLOTS;
+  static const String saveDirectory = GameSettings.saveDirectory;
+  static const int maxSaveSlots = GameSettings.maxSaveSlots;
   String currentSaveSlot = 'slot1';
 
   // 获取存档目录

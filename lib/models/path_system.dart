@@ -109,12 +109,12 @@ class PathSystem extends ChangeNotifier {
     int capacity = DEFAULT_BAG_SPACE;
 
     // 开发者模式下增加背包容量
-    if (kDebugMode || GameSettings.DEV_MODE) {
+    if (kDebugMode || GameSettings.devMode) {
       // 开发模式下默认100单位容量
       capacity = 100;
 
       // 如果开启了无限资源选项，提供极大的背包空间
-      if (GameSettings.DEV_OPTIONS['UNLIMITED_RESOURCES'] == true) {
+      if (GameSettings.devOptions['UNLIMITED_RESOURCES'] == true) {
         capacity = 999;
       }
     } else {
@@ -266,5 +266,22 @@ class PathSystem extends ChangeNotifier {
   bool hasFood() {
     return (outfit.containsKey('cured meat') && outfit['cured meat']! > 0) ||
         (outfit.containsKey('jerky') && outfit['jerky']! > 0);
+  }
+
+  /// 检查是否可以添加物品到背包
+  bool canAddSupply(String type) {
+    // 在调试模式下，允许无限添加物资
+    if (kDebugMode || GameSettings.devMode) {
+      return true;
+    }
+
+    // 开发者模式下无限资源
+    if (GameSettings.devOptions['UNLIMITED_RESOURCES'] == true) {
+      return true;
+    }
+
+    // 在正常游戏模式中，检查背包空间
+    double itemWeight = getItemWeight(type);
+    return getFreeSpace() >= itemWeight;
   }
 }

@@ -196,7 +196,7 @@ class _WorldScreenState extends State<WorldScreen> {
             ),
 
             // 开发模式下显示补充资源按钮
-            if (kDebugMode || GameSettings.DEV_MODE)
+            if (kDebugMode || GameSettings.devMode)
               IconButton(
                 icon: const Icon(Icons.add_circle, color: Colors.green),
                 tooltip: '补充资源',
@@ -204,7 +204,7 @@ class _WorldScreenState extends State<WorldScreen> {
               ),
 
             // 开发模式下显示位置重置按钮
-            if (kDebugMode || GameSettings.DEV_MODE)
+            if (kDebugMode || GameSettings.devMode)
               IconButton(
                 icon:
                     const Icon(Icons.home_repair_service, color: Colors.purple),
@@ -272,7 +272,7 @@ class _WorldScreenState extends State<WorldScreen> {
     int viewRadius = 15; // 增加地图可视半径
 
     // 开发模式下使用更大的视野
-    if (kDebugMode || GameSettings.DEV_MODE) {
+    if (kDebugMode || GameSettings.devMode) {
       viewRadius = 20;
     }
 
@@ -350,7 +350,7 @@ class _WorldScreenState extends State<WorldScreen> {
 
     // Calculate the start coordinates based on viewRadius (same as in _buildMap)
     int viewRadius = 5;
-    if (kDebugMode || GameSettings.DEV_MODE) {
+    if (kDebugMode || GameSettings.devMode) {
       viewRadius = 20;
     }
 

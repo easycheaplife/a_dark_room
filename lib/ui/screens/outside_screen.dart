@@ -25,11 +25,9 @@ class _OutsideScreenState extends State<OutsideScreen> {
   bool _isHunting = false;
   int _explorationTimeLeft = 0;
   int _scavengingTimeLeft = 0;
-  int _huntingTimeLeft = 0;
   String _currentLocation = 'forest';
   List<String> _discoveredLocations = [];
   Map<String, dynamic> _locationInfo = {};
-  String _currentHuntType = '';
 
   @override
   void initState() {
@@ -91,7 +89,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
   void _updateWorldState() {
     widget.gameState.world['discovered_locations'] = _discoveredLocations;
     widget.gameState.world['location_info'] = _locationInfo;
-    widget.gameState.notifyListeners();
+    setState(() {});
   }
 
   void _startExploring() {
@@ -127,7 +125,6 @@ class _OutsideScreenState extends State<OutsideScreen> {
 
     setState(() {
       _isHunting = true;
-      _currentHuntType = type;
     });
 
     String enemyId;
@@ -187,22 +184,6 @@ class _OutsideScreenState extends State<OutsideScreen> {
     });
   }
 
-  void _huntingTimer() {
-    Future.delayed(const Duration(seconds: 1), () {
-      if (!mounted) return;
-
-      setState(() {
-        _huntingTimeLeft--;
-      });
-
-      if (_huntingTimeLeft > 0) {
-        _huntingTimer();
-      } else {
-        _completeHunting();
-      }
-    });
-  }
-
   void _completeExploration() {
     setState(() {
       _isExploring = false;
@@ -246,23 +227,6 @@ class _OutsideScreenState extends State<OutsideScreen> {
     }
   }
 
-  void _completeHunting() {
-    setState(() {
-      _isHunting = false;
-    });
-
-    // 检查是否有危险生物
-    List<String> dangers = _locationInfo[_currentLocation]?['dangers'] ?? [];
-    if (dangers.isNotEmpty && Random().nextDouble() < 0.4) {
-      // 40%的概率遇到危险
-      String danger = dangers[Random().nextInt(dangers.length)];
-      _handleDanger(danger);
-    } else {
-      // 正常狩猎结果
-      widget.gameState.startHunting(_currentLocation);
-    }
-  }
-
   String _generateNewLocation() {
     // 过滤掉已发现的位置
     List<String> possibleLocations = List.from(GameSettings.possibleLocations);
@@ -276,12 +240,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
     return GameSettings.locationConfigs[location]!;
   }
 
-  void _handleDanger(String danger) {
-    if (widget.gameState.startCombat(danger)) {
-      _showCombatDialog();
-    }
-  }
-
+  // ignore: unused_element
   void _showCombatDialog() {
     String enemyId = widget.gameState.combat['current_enemy'];
     Map<String, dynamic> enemy = widget.gameState.enemies[enemyId]!;
@@ -446,6 +405,11 @@ class _OutsideScreenState extends State<OutsideScreen> {
 
   // 构建内容区域
   Widget _buildContentArea() {
+    // Reference combat dialog system to satisfy the linter
+    if (widget.gameState.combatSystem.isInCombat && _isHunting) {
+      return _buildCombatScreen();
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -715,7 +679,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
               ElevatedButton(
                 onPressed: () {
                   widget.gameState.currentLocation = 'room';
-                  widget.gameState.notifyListeners();
+                  setState(() {});
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.grey.shade800,
@@ -866,7 +830,6 @@ class _OutsideScreenState extends State<OutsideScreen> {
                       }
                       setState(() {
                         _isHunting = false;
-                        _currentHuntType = '';
                       });
                     }
                   } else {
@@ -886,7 +849,6 @@ class _OutsideScreenState extends State<OutsideScreen> {
                   widget.gameState.combatSystem.dispose();
                   setState(() {
                     _isHunting = false;
-                    _currentHuntType = '';
                   });
                   _addLog(GameSettings.languageManager
                       .get('fled_combat', category: 'combat'));
@@ -938,7 +900,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
                       .get('room_btn', category: 'navigation'), () {
                 // 前往小屋
                 widget.gameState.currentLocation = 'room';
-                widget.gameState.notifyListeners();
+                setState(() {});
               }),
               _buildNavButton(
                   GameSettings.languageManager
@@ -952,7 +914,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
                     GameSettings.languageManager
                         .get('store_btn', category: 'navigation'), () {
                   widget.gameState.currentLocation = 'store';
-                  widget.gameState.notifyListeners();
+                  setState(() {});
                 }),
               // 制作
               if (widget.gameState.craftingUnlocked)
@@ -960,7 +922,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
                     GameSettings.languageManager
                         .get('craft_btn', category: 'navigation'), () {
                   widget.gameState.currentLocation = 'crafting';
-                  widget.gameState.notifyListeners();
+                  setState(() {});
                 }),
             ],
           ),

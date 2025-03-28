@@ -7,22 +7,22 @@ import '../models/world_system.dart';
 class DevTools {
   /// 初始化开发者模式
   static void init(GameState gameState) {
-    if (!kDebugMode || !GameSettings.DEV_MODE) return;
+    if (!kDebugMode || !GameSettings.devMode) return;
 
-    if (GameSettings.DEV_OPTIONS['UNLOCK_ALL'] == true) {
+    if (GameSettings.devOptions['UNLOCK_ALL'] == true) {
       unlockAllFeatures(gameState);
     }
 
-    if (GameSettings.DEV_OPTIONS['UNLIMITED_RESOURCES'] == true) {
+    if (GameSettings.devOptions['UNLIMITED_RESOURCES'] == true) {
       addUnlimitedResources(gameState);
     }
 
-    if (GameSettings.DEV_OPTIONS['QUICK_TEST_PATH'] == true) {
+    if (GameSettings.devOptions['QUICK_TEST_PATH'] == true) {
       setupPathTesting(gameState);
     }
 
     if (kDebugMode) {
-      print('开发者模式已启用: ${GameSettings.DEV_OPTIONS}');
+      print('开发者模式已启用: ${GameSettings.devOptions}');
     }
   }
 

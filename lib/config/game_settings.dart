@@ -794,8 +794,8 @@ class GameSettings {
   };
 
   // 存档配置
-  static const String SAVE_DIRECTORY = 'saves';
-  static const int MAX_SAVE_SLOTS = 3;
+  static const String saveDirectory = 'saves';
+  static const int maxSaveSlots = 3;
 
   // 战斗系统初始状态
   static const Map<String, dynamic> initialCombatState = {
@@ -831,10 +831,10 @@ class GameSettings {
   };
 
   // 开发者相关设置
-  static const bool DEV_MODE = true;
+  static const bool devMode = true;
 
   // 开发者选项
-  static const Map<String, bool> DEV_OPTIONS = {
+  static const Map<String, bool> devOptions = {
     'QUICK_TEST_PATH': false, // 快速测试路径系统
     'UNLIMITED_RESOURCES': true, // 无限资源
     'SKIP_TUTORIALS': true, // 跳过教程
@@ -851,7 +851,7 @@ class GameSettings {
 
     if (kDebugMode) {
       print('游戏设置初始化完成');
-      print('开发者模式: $DEV_MODE');
+      print('开发者模式: $devMode');
       print('当前语言: ${languageManager.currentLanguage}');
     }
   }

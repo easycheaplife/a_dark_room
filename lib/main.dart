@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 import 'ui/screens/game_screen.dart';
 import 'models/game_state.dart';
 import 'engine/dev_tools.dart'; // 导入开发者工具
@@ -11,35 +11,41 @@ void main() async {
   // 初始化游戏设置和语言
   await GameSettings.init();
 
-  final prefs = await SharedPreferences.getInstance(); // 初始化 shared_preferences
-
-  final gameState = GameState(); // 创建 GameState 实例
+  // 创建 GameState 实例
+  final gameState = GameState();
 
   // 尝试加载最后一个存档
   try {
-    print('Checking for save game...');
+    _log('Checking for save game...');
     bool hasSave = await gameState.hasSaveGame();
-    print('Has save game: $hasSave');
+    _log('Has save game: $hasSave');
 
     if (hasSave) {
-      print('Attempting to load game...');
+      _log('Attempting to load game...');
       bool success = await gameState.loadGame();
-      print('Load game success: $success');
+      _log('Load game success: $success');
 
       if (!success) {
-        print('Failed to load game, starting new game');
+        _log('Failed to load game, starting new game');
       }
     } else {
-      print('No save game found, starting new game');
+      _log('No save game found, starting new game');
     }
   } catch (e) {
-    print('Error during save game loading: $e');
+    _log('Error during save game loading: $e');
   }
 
   // 初始化开发者工具
   DevTools.init(gameState);
 
   runApp(MyApp(gameState: gameState));
+}
+
+// Helper method to log messages only in debug mode
+void _log(String message) {
+  if (kDebugMode) {
+    print(message);
+  }
 }
 
 class MyApp extends StatelessWidget {

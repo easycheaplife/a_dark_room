@@ -8,7 +8,7 @@ class LanguageManager extends ChangeNotifier {
   static const String DEFAULT_LANGUAGE = 'zh'; // 默认使用中文
 
   // 支持的语言
-  static const Map<String, String> SUPPORTED_LANGUAGES = {
+  static const Map<String, String> supportedLanguages = {
     'zh': '中文',
     'en': 'English',
   };
@@ -624,7 +624,7 @@ class LanguageManager extends ChangeNotifier {
 
   // 切换语言
   Future<void> setLanguage(String languageCode) async {
-    if (!SUPPORTED_LANGUAGES.containsKey(languageCode)) {
+    if (!supportedLanguages.containsKey(languageCode)) {
       if (kDebugMode) {
         print('不支持的语言: $languageCode');
       }
