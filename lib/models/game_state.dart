@@ -43,8 +43,17 @@ class GameState extends ChangeNotifier {
       pathSystem.clearOutfit();
     }
 
-    // 通知监听器
-    notifyListeners();
+    // 减少通知频率，使用批量更新模式
+    if (previousLocation == 'outside' && newLocation == 'room') {
+      // 从外部返回时，使用延迟通知减少页面切换卡顿
+      Future.microtask(() => notifyListeners());
+    } else if (previousLocation == 'room' && newLocation == 'outside') {
+      // 从房间进入外部时，使用延迟通知减少页面切换卡顿
+      Future.microtask(() => notifyListeners());
+    } else {
+      // 其他场景正常通知
+      notifyListeners();
+    }
   }
 
   // 游戏时间跟踪
@@ -1636,5 +1645,63 @@ class GameState extends ChangeNotifier {
     // 随机概率触发，增加一些随机性
     final random = Random();
     return random.nextDouble() < 0.1;
+  }
+
+  // 将游戏状态保存到持久化存储
+  Future<bool> saveGameState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final gameStateJson = jsonEncode(toJson());
+      await prefs.setString('game_state', gameStateJson);
+      _log('游戏状态已保存');
+      return true;
+    } catch (e) {
+      _log('保存游戏状态出错: $e');
+      return false;
+    }
+  }
+
+  // 从持久化存储加载游戏状态 - 不触发UI刷新
+  Future<bool> loadGameStateWithoutNotify() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final gameStateJson = prefs.getString('game_state');
+      if (gameStateJson == null) {
+        _log('没有找到保存的游戏状态');
+        return false;
+      }
+
+      final gameStateMap = jsonDecode(gameStateJson) as Map<String, dynamic>;
+      fromJson(gameStateMap);
+      _log('游戏状态已加载');
+      return true;
+    } catch (e) {
+      _log('加载游戏状态出错: $e');
+      return false;
+    }
+  }
+
+  // 添加资源方法 - 不触发自动刷新
+  void addResourceWithoutNotify(String name, int amount) {
+    if (amount <= 0) return;
+
+    if (resources.containsKey(name)) {
+      int currentAmount = resources[name] ?? 0;
+      int limit = calculateResourceLimit(name);
+      resources[name] = (currentAmount + amount).clamp(0, limit);
+    } else {
+      resources[name] = amount;
+    }
+    // 不调用 notifyListeners()
+  }
+
+  // 使用资源方法 - 不触发自动刷新
+  bool useResourceWithoutNotify(String name, int amount) {
+    if (!resources.containsKey(name) || (resources[name] ?? 0) < amount) {
+      return false;
+    }
+    resources[name] = (resources[name] ?? 0) - amount;
+    // 不调用 notifyListeners()
+    return true;
   }
 }

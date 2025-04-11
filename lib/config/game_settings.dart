@@ -673,6 +673,15 @@ class GameSettings {
   };
 
   static const Map<String, Map<String, dynamic>> locationConfigs = {
+    'forest': {
+      'name': '森林',
+      'description': '茂密的森林，充满了动物和木材资源。',
+      'resources': ['wood', 'meat', 'fur'],
+      'dangers': ['wolf', 'bear'],
+      'exploration_time': 30,
+      'scavenging_time': 20,
+      'hunting_time': 15,
+    },
     'cave': {
       'name': '洞穴',
       'description': '一个黑暗的洞穴，可能藏有宝藏。',
@@ -730,6 +739,7 @@ class GameSettings {
   };
 
   static const List<String> possibleLocations = [
+    'forest',
     'cave',
     'river',
     'mountain',

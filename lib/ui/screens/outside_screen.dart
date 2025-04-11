@@ -3,6 +3,7 @@ import '../../models/game_state.dart';
 import '../../models/combat_system.dart';
 import '../../config/game_settings.dart';
 import 'dart:math';
+import 'dart:async' show Timer;
 
 /// 户外屏幕 - 村庄和探索
 class OutsideScreen extends StatefulWidget {
@@ -17,34 +18,95 @@ class OutsideScreen extends StatefulWidget {
   State<OutsideScreen> createState() => _OutsideScreenState();
 }
 
-class _OutsideScreenState extends State<OutsideScreen> {
+class _OutsideScreenState extends State<OutsideScreen>
+    with AutomaticKeepAliveClientMixin {
+  // 确保页面状态保持，防止频繁重建
+  @override
+  bool get wantKeepAlive => true;
+
+  // 持有本地状态，不依赖GameState自动更新
   final List<String> _logs = []; // 游戏日志
   Map<String, int> _resources = {}; // 资源
   bool _isExploring = false;
   bool _isScavenging = false;
   bool _isHunting = false;
-  int _explorationTimeLeft = 0;
-  int _scavengingTimeLeft = 0;
   String _currentLocation = 'forest';
   List<String> _discoveredLocations = [];
   Map<String, dynamic> _locationInfo = {};
 
+  // 计时器
+  Timer? _explorationTimer;
+  Timer? _scavengingTimer;
+  bool _isInitialized = false;
+
+  // 防止重复监听
+  bool _listenerAttached = false;
+
   @override
   void initState() {
     super.initState();
-    widget.gameState.addListener(_updateState);
-    _updateState();
-    _loadLocationData();
+    // 初始化时手动更新一次，然后不再自动更新
+    if (!_isInitialized) {
+      _manuallyUpdateState();
+      _loadLocationData();
+      _isInitialized = true;
+
+      // 监听应用生命周期
+      WidgetsBinding.instance.addObserver(
+        LifecycleEventHandler(
+          resumeCallBack: () async {
+            if (mounted) _manuallyUpdateState();
+            return;
+          },
+        ),
+      );
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 确保监听器只添加一次
+    if (!_listenerAttached) {
+      // 只监听位置变化
+      widget.gameState.addListener(_handleGameStateChange);
+      _listenerAttached = true;
+    }
+  }
+
+  // 只在真正需要时更新页面
+  void _handleGameStateChange() {
+    if (widget.gameState.currentLocation == 'outside' && mounted) {
+      _manuallyUpdateState();
+    }
   }
 
   @override
   void dispose() {
-    widget.gameState.removeListener(_updateState);
+    // 页面销毁时，取消所有计时器和监听
+    _cancelAllTimers();
+    if (_listenerAttached) {
+      widget.gameState.removeListener(_handleGameStateChange);
+      _listenerAttached = false;
+    }
+    WidgetsBinding.instance.removeObserver(
+      LifecycleEventHandler(resumeCallBack: () async => null),
+    );
     super.dispose();
   }
 
-  // 更新状态
-  void _updateState() {
+  // 取消所有计时器
+  void _cancelAllTimers() {
+    _explorationTimer?.cancel();
+    _scavengingTimer?.cancel();
+    _explorationTimer = null;
+    _scavengingTimer = null;
+  }
+
+  // 手动更新状态而不是依赖监听器
+  void _manuallyUpdateState() {
+    if (!mounted) return;
+
     setState(() {
       _resources = Map<String, int>.from(widget.gameState.resources);
     });
@@ -52,80 +114,130 @@ class _OutsideScreenState extends State<OutsideScreen> {
 
   // 添加日志
   void _addLog(String message) {
-    setState(() {
-      _logs.add(message);
-      // 保持日志不超过10条
-      if (_logs.length > 10) {
-        _logs.removeAt(0);
-      }
-    });
+    if (mounted) {
+      setState(() {
+        _logs.add(message);
+        // 保持日志不超过10条
+        if (_logs.length > 10) {
+          _logs.removeAt(0);
+        }
+      });
+    }
   }
 
   void _loadLocationData() {
-    // 加载已发现的位置
+    // 深拷贝已发现的位置，避免引用问题
     _discoveredLocations =
         List<String>.from(widget.gameState.world['discovered_locations'] ?? []);
+
+    // 确保location_info不为空
+    if (widget.gameState.world['location_info'] == null) {
+      widget.gameState.world['location_info'] = {};
+    }
+
+    // 深拷贝位置信息，避免引用问题
     _locationInfo = Map<String, dynamic>.from(
         widget.gameState.world['location_info'] ?? {});
 
     // 如果没有发现任何位置，添加默认的森林
     if (_discoveredLocations.isEmpty) {
       _discoveredLocations.add('forest');
-      _locationInfo['forest'] = {
-        'name':
-            GameSettings.languageManager.get('forest', category: 'locations'),
-        'description': GameSettings.languageManager
-            .get('forest_desc', category: 'locations'),
-        'resources': ['wood', 'meat', 'fur'],
-        'dangers': ['wolf'],
-        'exploration_time': 30,
-        'scavenging_time': 20,
-        'hunting_time': 15,
-      };
+      // 直接使用预定义的位置配置
+      _locationInfo['forest'] = GameSettings.locationConfigs['forest'] ??
+          {
+            'name': GameSettings.languageManager
+                .get('forest', category: 'locations'),
+            'description': GameSettings.languageManager
+                .get('forest_desc', category: 'locations'),
+            'resources': ['wood', 'meat', 'fur'],
+            'dangers': ['wolf'],
+            'exploration_time': 30,
+            'scavenging_time': 20,
+            'hunting_time': 15,
+          };
       _updateWorldState();
     }
   }
 
   void _updateWorldState() {
-    widget.gameState.world['discovered_locations'] = _discoveredLocations;
-    widget.gameState.world['location_info'] = _locationInfo;
-    setState(() {});
+    // 更新世界状态但不触发全局刷新
+    widget.gameState.world['discovered_locations'] =
+        List<String>.from(_discoveredLocations);
+    widget.gameState.world['location_info'] =
+        Map<String, dynamic>.from(_locationInfo);
   }
 
   void _startExploring() {
     if (_isExploring) return;
 
+    // 取消任何现有计时器
+    _cancelAllTimers();
+
+    // 设置探索状态
     setState(() {
       _isExploring = true;
-      _explorationTimeLeft =
-          _locationInfo[_currentLocation]?['exploration_time'] ?? 30;
     });
 
+    // 添加日志
     _addLog(
         '${GameSettings.languageManager.get('exploring_in', category: 'locations')} ${_locationInfo[_currentLocation]['name']}...');
-    _explorationTimer();
+
+    // 获取探索时间
+    final explorationTime =
+        _locationInfo[_currentLocation]?['exploration_time'] ?? 30;
+
+    // 开发模式下使用短时间测试
+    final actualTime = GameSettings.devMode ? 3 : explorationTime;
+
+    // 创建计时器，只在完成时更新UI
+    _explorationTimer = Timer(Duration(seconds: actualTime), () {
+      // 安全检查
+      if (!mounted) return;
+
+      // 更新状态为不再探索
+      setState(() {
+        _isExploring = false;
+      });
+
+      // 执行探索完成逻辑
+      _completeExploration();
+    });
   }
 
   void _startScavenging() {
     if (_isScavenging) return;
 
+    // 取消任何现有计时器
+    _cancelAllTimers();
+
+    // 设置搜寻状态
     setState(() {
       _isScavenging = true;
-      _scavengingTimeLeft =
-          _locationInfo[_currentLocation]?['scavenging_time'] ?? 20;
     });
 
+    // 添加日志
     _addLog(
         '${GameSettings.languageManager.get('scavenging_in', category: 'locations')} ${_locationInfo[_currentLocation]['name']}...');
-    _scavengingTimer();
+
+    // 创建计时器，但不更新UI，只在完成时更新
+    final scavengingTime =
+        _locationInfo[_currentLocation]?['scavenging_time'] ?? 20;
+    _scavengingTimer = Timer(Duration(seconds: scavengingTime), () {
+      if (!mounted) return;
+
+      setState(() {
+        _isScavenging = false;
+      });
+
+      _completeScavenging();
+    });
   }
 
   void _startHunting(String type) {
     if (_isHunting) return;
 
-    setState(() {
-      _isHunting = true;
-    });
+    // 取消任何现有计时器
+    _cancelAllTimers();
 
     String enemyId;
     switch (type) {
@@ -139,12 +251,17 @@ class _OutsideScreenState extends State<OutsideScreen> {
         return;
     }
 
+    // 设置狩猎状态
+    setState(() {
+      _isHunting = true;
+    });
+
+    // 开始战斗
     if (widget.gameState.combatSystem.startCombat(enemyId, widget.gameState)) {
-      // Get the translated enemy name
+      // 获取敌人名称
       String enemyName = GameSettings.languageManager.get(
           widget.gameState.combatSystem.enemies[enemyId]!.id,
           category: 'combat');
-      // Get the translated encounter message with enemy name
       String encounterMessage = GameSettings.languageManager
           .get('encountered', category: 'combat')
           .replaceAll('%s', enemyName);
@@ -152,51 +269,22 @@ class _OutsideScreenState extends State<OutsideScreen> {
     }
   }
 
-  void _explorationTimer() {
-    Future.delayed(const Duration(seconds: 1), () {
-      if (!mounted) return;
-
-      setState(() {
-        _explorationTimeLeft--;
-      });
-
-      if (_explorationTimeLeft > 0) {
-        _explorationTimer();
-      } else {
-        _completeExploration();
-      }
-    });
-  }
-
-  void _scavengingTimer() {
-    Future.delayed(const Duration(seconds: 1), () {
-      if (!mounted) return;
-
-      setState(() {
-        _scavengingTimeLeft--;
-      });
-
-      if (_scavengingTimeLeft > 0) {
-        _scavengingTimer();
-      } else {
-        _completeScavenging();
-      }
-    });
-  }
-
   void _completeExploration() {
-    setState(() {
-      _isExploring = false;
-    });
-
     // 随机发现新位置
     if (Random().nextDouble() < 0.3) {
       // 30%的概率发现新位置
       String newLocation = _generateNewLocation();
       if (newLocation.isNotEmpty) {
-        _discoveredLocations.add(newLocation);
-        _locationInfo[newLocation] = _generateLocationInfo(newLocation);
+        // 使用setState更新UI
+        setState(() {
+          _discoveredLocations.add(newLocation);
+          _locationInfo[newLocation] = _generateLocationInfo(newLocation);
+        });
+
+        // 保存发现到世界状态
         _updateWorldState();
+
+        // 添加日志并显示对话框
         _addLog('探索发现了一个新的地点：${_locationInfo[newLocation]['name']}');
         _showNewLocationDialog(newLocation);
       } else {
@@ -208,10 +296,6 @@ class _OutsideScreenState extends State<OutsideScreen> {
   }
 
   void _completeScavenging() {
-    setState(() {
-      _isScavenging = false;
-    });
-
     // 获取当前位置可获得的资源
     List<String> availableResources =
         _locationInfo[_currentLocation]?['resources'] ?? [];
@@ -219,7 +303,13 @@ class _OutsideScreenState extends State<OutsideScreen> {
       String resource =
           availableResources[Random().nextInt(availableResources.length)];
       int amount = Random().nextInt(3) + 1;
+
+      // 添加资源
       widget.gameState.addResource(resource, amount);
+
+      // 手动更新本地资源状态
+      _manuallyUpdateState();
+
       _addLog(
           '在${_locationInfo[_currentLocation]['name']}中找到了 $amount 个 $resource');
     } else {
@@ -240,88 +330,6 @@ class _OutsideScreenState extends State<OutsideScreen> {
     return GameSettings.locationConfigs[location]!;
   }
 
-  // ignore: unused_element
-  void _showCombatDialog() {
-    String enemyId = widget.gameState.combat['current_enemy'];
-    Map<String, dynamic> enemy = widget.gameState.enemies[enemyId]!;
-
-    // Get the translated enemy name
-    String enemyName = GameSettings.languageManager
-        .get(enemy['name_key'] ?? enemyId, category: 'combat');
-
-    // Format health and turns strings with proper translations
-    String enemyHealthText = GameSettings.languageManager
-        .get('enemy_health_fraction', category: 'combat')
-        .replaceFirst('%d', '${enemy['health']}')
-        .replaceFirst('%d', '${enemy['health']}');
-
-    String playerHealthText = GameSettings.languageManager
-        .get('player_health_fraction', category: 'combat')
-        .replaceFirst('%d', '${widget.gameState.combat['player_health']}')
-        .replaceFirst('%d', '${widget.gameState.combat['player_max_health']}');
-
-    String turnsLeftText = GameSettings.languageManager
-        .get('turns_left_value', category: 'combat')
-        .replaceFirst('%d', '${widget.gameState.combat['combat_round']}');
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey.shade900,
-        title: Text(
-          '${GameSettings.languageManager.get('combat_title', category: 'combat')}$enemyName',
-          style: const TextStyle(color: Colors.white),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              enemyHealthText,
-              style: const TextStyle(color: Colors.white),
-            ),
-            Text(
-              playerHealthText,
-              style: const TextStyle(color: Colors.white),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              turnsLeftText,
-              style: const TextStyle(color: Colors.white),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Map<String, dynamic> result = widget.gameState.attack();
-              if (!result['success']) {
-                Navigator.of(context).pop();
-                if (result['message'].contains('杀死了')) {
-                  _showGameOverDialog();
-                }
-              } else {
-                Navigator.of(context).pop();
-                _showCombatDialog();
-              }
-            },
-            child: Text(
-                GameSettings.languageManager.get('attack', category: 'combat')),
-          ),
-          TextButton(
-            onPressed: () {
-              widget.gameState.flee();
-              Navigator.of(context).pop();
-            },
-            child: Text(
-                GameSettings.languageManager.get('flee', category: 'combat')),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showNewLocationDialog(String location) {
     showDialog(
       context: context,
@@ -338,24 +346,65 @@ class _OutsideScreenState extends State<OutsideScreen> {
     );
   }
 
-  void _showGameOverDialog() {
+  // 显示战斗结果对话框
+  void _showCombatResultDialog(bool victory, String loot, String enemyName) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('游戏结束'),
-        content: const Text('你的角色已经死亡。'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // 重置游戏状态
-              widget.gameState.resetGame();
-            },
-            child: const Text('重新开始'),
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.grey.shade900,
+          title: Text(
+            victory
+                ? GameSettings.languageManager
+                    .get('victory', category: 'combat')
+                : GameSettings.languageManager
+                    .get('defeat', category: 'combat'),
+            style: TextStyle(
+              color: victory ? Colors.green : Colors.red,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ],
-      ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${GameSettings.languageManager.get('encountered', category: 'combat').replaceFirst('%s', enemyName)}',
+                style: const TextStyle(color: Colors.white),
+              ),
+              const SizedBox(height: 16),
+              if (victory && loot.isNotEmpty) ...[
+                Text(
+                  GameSettings.languageManager
+                      .get('loot_gained', category: 'combat'),
+                  style: const TextStyle(
+                    color: Colors.yellow,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  loot,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                GameSettings.languageManager
+                    .get('continue', category: 'common'),
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -405,7 +454,6 @@ class _OutsideScreenState extends State<OutsideScreen> {
 
   // 构建内容区域
   Widget _buildContentArea() {
-    // Reference combat dialog system to satisfy the linter
     if (widget.gameState.combatSystem.isInCombat && _isHunting) {
       return _buildCombatScreen();
     }
@@ -422,61 +470,59 @@ class _OutsideScreenState extends State<OutsideScreen> {
             const SizedBox(height: 16),
             _buildResourceDisplay(),
             const SizedBox(height: 16),
-            // 添加工人状态显示
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade900,
-                    border: Border.all(color: Colors.grey.shade800),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        GameSettings.languageManager
-                            .get('worker_status', category: 'room'),
-                        style: TextStyle(
-                          color: Colors.grey.shade400,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          '${GameSettings.languageManager.get('gatherer', category: 'villagers')}: 5',
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          '${GameSettings.languageManager.get('hunter', category: 'villagers')}: 3',
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          '${GameSettings.languageManager.get('builder', category: 'villagers')}: 2',
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+            _buildWorkersDisplay(),
           ],
           const SizedBox(height: 16),
           _buildGameLog(),
           const SizedBox(height: 16),
           _buildActionButtons(),
+        ],
+      ),
+    );
+  }
+
+  // 构建工人显示
+  Widget _buildWorkersDisplay() {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade900,
+        border: Border.all(color: Colors.grey.shade800),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            GameSettings.languageManager.get('worker_status', category: 'room'),
+            style: TextStyle(
+              color: Colors.grey.shade400,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              '${GameSettings.languageManager.get('gatherer', category: 'villagers')}: 5',
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              '${GameSettings.languageManager.get('hunter', category: 'villagers')}: 3',
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              '${GameSettings.languageManager.get('builder', category: 'villagers')}: 2',
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
         ],
       ),
     );
@@ -608,7 +654,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
             spacing: 10,
             runSpacing: 10,
             children: [
-              // 探索按钮
+              // 探索按钮 - 无倒计时显示
               ElevatedButton(
                 onPressed: _isExploring ? null : _startExploring,
                 style: ElevatedButton.styleFrom(
@@ -617,13 +663,14 @@ class _OutsideScreenState extends State<OutsideScreen> {
                 ),
                 child: Text(
                   _isExploring
-                      ? '${GameSettings.languageManager.get('exploring', category: 'actions')}... $_explorationTimeLeft${GameSettings.languageManager.get('seconds', category: 'common')}'
+                      ? GameSettings.languageManager
+                          .get('exploring', category: 'actions')
                       : GameSettings.languageManager
                           .get('explore', category: 'actions'),
                   style: const TextStyle(color: Colors.white),
                 ),
               ),
-              // 搜索按钮
+              // 搜索按钮 - 无倒计时显示
               ElevatedButton(
                 onPressed: _isScavenging ? null : _startScavenging,
                 style: ElevatedButton.styleFrom(
@@ -632,7 +679,8 @@ class _OutsideScreenState extends State<OutsideScreen> {
                 ),
                 child: Text(
                   _isScavenging
-                      ? '${GameSettings.languageManager.get('scavenging', category: 'actions')}... $_scavengingTimeLeft${GameSettings.languageManager.get('seconds', category: 'common')}'
+                      ? GameSettings.languageManager
+                          .get('scavenging', category: 'actions')
                       : GameSettings.languageManager
                           .get('scavenge', category: 'actions'),
                   style: const TextStyle(color: Colors.white),
@@ -661,7 +709,11 @@ class _OutsideScreenState extends State<OutsideScreen> {
               ElevatedButton(
                 onPressed: widget.gameState.isGatheringWater
                     ? null
-                    : () => widget.gameState.gatherWater(),
+                    : () {
+                        widget.gameState.gatherWater();
+                        // 手动更新状态
+                        _manuallyUpdateState();
+                      },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.grey.shade800,
                   disabledBackgroundColor: Colors.grey.shade900,
@@ -676,17 +728,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
                 ),
               ),
               // 返回房间按钮
-              ElevatedButton(
-                onPressed: () {
-                  widget.gameState.currentLocation = 'room';
-                  setState(() {});
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey.shade800,
-                ),
-                child: Text(GameSettings.languageManager
-                    .get('return_room', category: 'actions')),
-              ),
+              _buildReturnRoomButton(),
             ],
           ),
         ],
@@ -726,7 +768,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
                       label: Text(_locationInfo[loc]?["name"] ?? loc),
                       selected: _currentLocation == loc,
                       onSelected: (selected) {
-                        if (selected) {
+                        if (selected && _currentLocation != loc) {
                           setState(() {
                             _currentLocation = loc;
                           });
@@ -748,11 +790,9 @@ class _OutsideScreenState extends State<OutsideScreen> {
     final enemyHealth = combatState['enemyHealth'] as int;
     final turnsLeft = combatState['turnsLeft'] as int;
 
-    // Get enemy name translation
     String enemyName =
         GameSettings.languageManager.get(enemy.id, category: 'combat');
 
-    // Get formatted health and turns text
     String enemyHealthText = GameSettings.languageManager
         .get('enemy_health_fraction', category: 'combat')
         .replaceFirst('%d', '$enemyHealth')
@@ -806,35 +846,58 @@ class _OutsideScreenState extends State<OutsideScreen> {
             children: [
               ElevatedButton(
                 onPressed: () {
+                  // 执行战斗回合
                   Map<String, dynamic> result = widget.gameState.combatSystem
                       .executeCombatTurn(widget.gameState);
+
                   if (result['success']) {
                     _addLog(result['message']);
+
                     if (result.containsKey('victory')) {
-                      // 战斗结束
-                      if (result['victory']) {
+                      bool victory = result['victory'];
+                      String lootInfo = '';
+
+                      if (victory) {
+                        // 记录战利品信息
                         _addLog(
                             '${GameSettings.languageManager.get('victory', category: 'combat')} ${GameSettings.languageManager.get('loot_gained', category: 'combat')}');
+
                         (result['loot'] as Map<String, int>)
                             .forEach((resource, amount) {
                           _addLog(
                               '${GameSettings.languageManager.get(resource, category: 'resources')}: $amount');
+                          lootInfo +=
+                              '${GameSettings.languageManager.get(resource, category: 'resources')}: $amount\n';
                         });
+
                         if (result.containsKey('experience')) {
                           _addLog(
                               '${GameSettings.languageManager.get('experience_gained', category: 'combat')} ${result['experience']}');
+                          lootInfo +=
+                              '${GameSettings.languageManager.get('experience_gained', category: 'combat')} ${result['experience']}';
                         }
+
+                        // 手动更新资源状态
+                        _manuallyUpdateState();
                       } else {
+                        // 失败
                         _addLog(GameSettings.languageManager
                             .get('defeat', category: 'combat'));
                       }
+
+                      // 更新战斗状态
                       setState(() {
                         _isHunting = false;
                       });
+
+                      // 显示战斗结果
+                      _showCombatResultDialog(victory, lootInfo, enemy.name);
                     }
                   } else {
                     _addLog(result['message']);
                   }
+
+                  // 更新UI
                   setState(() {});
                 },
                 style: ElevatedButton.styleFrom(
@@ -846,6 +909,7 @@ class _OutsideScreenState extends State<OutsideScreen> {
               ),
               ElevatedButton(
                 onPressed: () {
+                  // 逃跑
                   widget.gameState.combatSystem.dispose();
                   setState(() {
                     _isHunting = false;
@@ -867,64 +931,96 @@ class _OutsideScreenState extends State<OutsideScreen> {
     );
   }
 
+  // 返回房间按钮 - 优化切换
+  Widget _buildReturnRoomButton() {
+    return ElevatedButton(
+      onPressed: () {
+        // 取消所有计时器
+        _cancelAllTimers();
+        // 先保存状态再切换
+        _updateWorldState();
+
+        // 使用异步切换以避免重建过程中的卡顿
+        Future.microtask(() {
+          widget.gameState.currentLocation = 'room';
+        });
+      },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.grey.shade800,
+      ),
+      child: Text(
+          GameSettings.languageManager.get('return_room', category: 'actions')),
+    );
+  }
+
+  // 添加对热重载的支持
+  @override
+  void reassemble() {
+    super.reassemble();
+    _manuallyUpdateState();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // 资源栏
-            _buildResourceBar(),
-            // 内容区域
-            Expanded(
-              child: _buildContentArea(),
-            ),
-          ],
-        ),
-      ),
-      // 底部导航栏，显示不同场景的按钮
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.black,
-          border: Border(
-            top: BorderSide(color: Colors.grey.shade800, width: 1),
+    // 使用RepaintBoundary减少重绘
+    return RepaintBoundary(
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: Column(
+            children: [
+              // 资源栏
+              _buildResourceBar(),
+              // 内容区域
+              Expanded(
+                child: _buildContentArea(),
+              ),
+            ],
           ),
         ),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              _buildNavButton(
-                  GameSettings.languageManager
-                      .get('room_btn', category: 'navigation'), () {
-                // 前往小屋
-                widget.gameState.currentLocation = 'room';
-                setState(() {});
-              }),
-              _buildNavButton(
-                  GameSettings.languageManager
-                      .get('hunt_btn', category: 'navigation'), () {
-                // 狩猎
-                _startHunting('small');
-              }),
-              // 交易站
-              if (widget.gameState.storeOpened)
+        // 底部导航栏，显示不同场景的按钮
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            color: Colors.black,
+            border: Border(
+              top: BorderSide(color: Colors.grey.shade800, width: 1),
+            ),
+          ),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
                 _buildNavButton(
                     GameSettings.languageManager
-                        .get('store_btn', category: 'navigation'), () {
-                  widget.gameState.currentLocation = 'store';
-                  setState(() {});
+                        .get('room_btn', category: 'navigation'), () {
+                  // 前往小屋
+                  _cancelAllTimers();
+                  widget.gameState.currentLocation = 'room';
                 }),
-              // 制作
-              if (widget.gameState.craftingUnlocked)
                 _buildNavButton(
                     GameSettings.languageManager
-                        .get('craft_btn', category: 'navigation'), () {
-                  widget.gameState.currentLocation = 'crafting';
-                  setState(() {});
+                        .get('hunt_btn', category: 'navigation'), () {
+                  // 狩猎
+                  _startHunting('small');
                 }),
-            ],
+                // 交易站
+                if (widget.gameState.storeOpened)
+                  _buildNavButton(
+                      GameSettings.languageManager
+                          .get('store_btn', category: 'navigation'), () {
+                    _cancelAllTimers();
+                    widget.gameState.currentLocation = 'store';
+                  }),
+                // 制作
+                if (widget.gameState.craftingUnlocked)
+                  _buildNavButton(
+                      GameSettings.languageManager
+                          .get('craft_btn', category: 'navigation'), () {
+                    _cancelAllTimers();
+                    widget.gameState.currentLocation = 'crafting';
+                  }),
+              ],
+            ),
           ),
         ),
       ),
@@ -952,5 +1048,21 @@ class _OutsideScreenState extends State<OutsideScreen> {
         ),
       ),
     );
+  }
+}
+
+// 生命周期事件处理器
+class LifecycleEventHandler extends WidgetsBindingObserver {
+  final Future<void> Function() resumeCallBack;
+
+  LifecycleEventHandler({
+    required this.resumeCallBack,
+  });
+
+  @override
+  Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
+    if (state == AppLifecycleState.resumed) {
+      await resumeCallBack();
+    }
   }
 }
