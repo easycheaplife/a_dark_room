@@ -94,9 +94,48 @@ class _PathScreenState extends State<PathScreen> {
                   const SizedBox(height: 10),
                   ElevatedButton(
                     onPressed: () {
-                      widget.gameState.currentLocation = 'room';
-                      setState(() {
-                        // Update state when changing location
+                      // 显示加载指示器提高感知性能
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            backgroundColor: Colors.black87,
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const CircularProgressIndicator(),
+                                const SizedBox(height: 16),
+                                Text(
+                                  GameSettings.languageManager
+                                      .get('returning', category: 'common'),
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+
+                      // 使用Future延迟让UI有时间响应
+                      Future.delayed(const Duration(milliseconds: 50), () {
+                        try {
+                          // 切换到房间
+                          widget.gameState.currentLocation = 'room';
+
+                          // 关闭加载对话框
+                          if (Navigator.canPop(context)) {
+                            Navigator.of(context).pop();
+                          }
+                        } catch (e) {
+                          // 确保对话框被关闭
+                          if (Navigator.canPop(context)) {
+                            Navigator.of(context).pop();
+                          }
+
+                          // 直接切换到房间
+                          widget.gameState.currentLocation = 'room';
+                        }
                       });
                     },
                     child: Text(GameSettings.languageManager

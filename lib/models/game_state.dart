@@ -24,7 +24,28 @@ class GameState extends ChangeNotifier {
   }
 
   // 基本状态
-  String currentLocation = 'room'; // 当前位置：起始为room
+  String _currentLocation = 'room'; // 当前位置：起始为room
+
+  // 获取当前位置
+  String get currentLocation => _currentLocation;
+
+  // 设置当前位置 - 优化版本
+  set currentLocation(String newLocation) {
+    if (_currentLocation == newLocation) return; // 如果位置没变，直接返回
+
+    // 记录之前的位置
+    String previousLocation = _currentLocation;
+    _currentLocation = newLocation;
+
+    // 执行位置切换时的优化操作
+    if (previousLocation == 'path' && newLocation == 'room') {
+      // 从路径返回房间时清理资源
+      pathSystem.clearOutfit();
+    }
+
+    // 通知监听器
+    notifyListeners();
+  }
 
   // 游戏时间跟踪
   DateTime gameStartTime = DateTime.now();

@@ -1783,15 +1783,59 @@ class _RoomScreenState extends State<RoomScreen> {
   // 探索路径的动作
   void _explorePathAction() {
     try {
-      // 直接设置路径系统的装备，避免多次调用
-      widget.gameState.pathSystem.outfit = {
-        'cured meat': 3,
-        'water': 2,
-        'torch': 1
-      };
+      // 创建加载指示器
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: Colors.black87,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                Text(
+                  GameSettings.languageManager
+                      .get('preparing', category: 'common'),
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ],
+            ),
+          );
+        },
+      );
 
-      // 切换到路径界面
-      widget.gameState.currentLocation = 'path';
+      // 使用Future延迟让UI有时间响应
+      Future.delayed(const Duration(milliseconds: 50), () {
+        try {
+          // 优化：直接设置路径系统的装备，避免多次调用和状态更新
+          widget.gameState.pathSystem.outfit = {
+            'cured meat': 3,
+            'water': 2,
+            'torch': 1
+          };
+
+          // 关闭加载对话框
+          if (mounted && Navigator.canPop(context)) {
+            Navigator.of(context).pop();
+          }
+
+          // 切换到路径界面
+          widget.gameState.currentLocation = 'path';
+        } catch (e) {
+          // 确保对话框被关闭
+          if (mounted && Navigator.canPop(context)) {
+            Navigator.of(context).pop();
+          }
+
+          _showMessage(
+              GameSettings.languageManager.get('path_error', category: 'menu'));
+          if (kDebugMode) {
+            print('路径系统错误: $e');
+          }
+        }
+      });
     } catch (e) {
       _showMessage(
           GameSettings.languageManager.get('path_error', category: 'menu'));

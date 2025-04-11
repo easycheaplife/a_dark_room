@@ -47,8 +47,49 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 根据当前位置显示不同的屏幕
-    switch (widget.gameState.currentLocation) {
+    // 添加延迟/预加载处理以改善界面切换性能
+    return FutureBuilder<Widget>(
+      future: _getScreenForLocation(widget.gameState.currentLocation),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          // 显示加载指示器作为中间状态
+          return Scaffold(
+            backgroundColor: Colors.black,
+            body: Center(
+              child: CircularProgressIndicator(
+                color: Colors.brown.shade800,
+              ),
+            ),
+          );
+        } else if (snapshot.hasError) {
+          // 处理错误
+          if (kDebugMode) {
+            print('Error loading screen: ${snapshot.error}');
+          }
+          // 返回基本错误视图
+          return Scaffold(
+            backgroundColor: Colors.black,
+            body: Center(
+              child: Text(
+                'Error loading game view',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          );
+        } else {
+          // 返回已加载的界面
+          return snapshot.data ?? const SizedBox();
+        }
+      },
+    );
+  }
+
+  // 根据位置异步创建相应的屏幕
+  Future<Widget> _getScreenForLocation(String location) async {
+    // 使用微任务让UI线程有机会响应
+    await Future.microtask(() => null);
+
+    switch (location) {
       case 'room':
         return RoomScreen(gameState: widget.gameState);
       case 'outside':
