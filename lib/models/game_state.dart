@@ -84,7 +84,7 @@ class GameState extends ChangeNotifier {
     'workers': {}, // 工人数量，按类型
     'total': 0, // 总人口
     'max': 0, // 最大人口
-    'happiness': 100, // 村民幸福度
+    'happiness': 100.0, // 村民幸福度 - 确保是double类型
   };
 
   // 村民类型定义
@@ -651,7 +651,7 @@ class GameState extends ChangeNotifier {
     character = Map<String, dynamic>.from(json['character'] ?? {});
     world = Map<String, dynamic>.from(json['world'] ?? {});
     population = Map<String, dynamic>.from(json['population'] ??
-        {'workers': {}, 'total': 0, 'max': 0, 'happiness': 100});
+        {'workers': {}, 'total': 0, 'max': 0, 'happiness': 100.0});
     storeOpened = json['storeOpened'] ?? false;
     outsideUnlocked = json['outsideUnlocked'] ?? false;
     craftingUnlocked = json['craftingUnlocked'] ?? false;
@@ -968,9 +968,10 @@ class GameState extends ChangeNotifier {
     int hutCount = getBuildingCount('hut');
     double housingHappiness = (hutCount * 2 / total).clamp(0.0, 1.0) * 50.0;
 
-    // 更新幸福度
-    population['happiness'] =
+    // 更新幸福度 - 确保存储为double类型
+    double finalHappiness =
         (baseHappiness + foodHappiness + housingHappiness).clamp(0.0, 100.0);
+    population['happiness'] = finalHappiness;
   }
 
   // 村民工作产出
@@ -1139,7 +1140,7 @@ class GameState extends ChangeNotifier {
 
       // 加载人口信息
       population = Map<String, dynamic>.from(saveData['population'] ??
-          {'workers': {}, 'total': 0, 'max': 0, 'happiness': 100});
+          {'workers': {}, 'total': 0, 'max': 0, 'happiness': 100.0});
       _log(
           'Loaded population: total=${population['total']}, max=${population['max']}');
 
@@ -1360,7 +1361,7 @@ class GameState extends ChangeNotifier {
       'workers': {},
       'total': 0,
       'max': 0,
-      'happiness': 100,
+      'happiness': 100.0,
     };
 
     // 重置角色状态

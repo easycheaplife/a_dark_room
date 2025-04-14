@@ -651,11 +651,24 @@ class LanguageManager extends ChangeNotifier {
   // 获取当前语言的文本
   String get(String key, {String category = 'common'}) {
     try {
-      return _translations[currentLanguage]![category]![key] ?? key;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Language key not found: $category/$key');
+      // 先检查语言是否存在
+      if (!_translations.containsKey(currentLanguage)) {
+        return key;
       }
+
+      // 检查分类是否存在
+      if (!_translations[currentLanguage]!.containsKey(category)) {
+        return key;
+      }
+
+      // 检查键是否存在
+      if (!_translations[currentLanguage]![category]!.containsKey(key)) {
+        return key;
+      }
+
+      return _translations[currentLanguage]![category]![key]!;
+    } catch (e) {
+      // 确保始终返回一个值，避免空白界面
       return key;
     }
   }

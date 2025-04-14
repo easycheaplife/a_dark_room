@@ -4,6 +4,7 @@ import '../../models/game_state.dart';
 import '../../config/game_settings.dart';
 import '../../engine/dev_tools.dart';
 import '../../config/language_manager.dart';
+import '../../main.dart'; // 导入releaseLog函数
 
 /// 房间屏幕 - 游戏的起始区域
 class RoomScreen extends StatefulWidget {
@@ -768,6 +769,12 @@ class _RoomScreenState extends State<RoomScreen> {
         _buildActionButton(
             GameSettings.languageManager.get('villagers', category: 'actions'),
             _fireLevel > 0, () {
+          // 添加日志记录
+          releaseLog("点击村民按钮");
+          releaseLog("村民类型数量: ${widget.gameState.villagerTypes.length}");
+          releaseLog(
+              "村民类型键: ${widget.gameState.villagerTypes.keys.join(', ')}");
+
           setState(() {
             _showVillagersMenu = true;
             _showBuildingsMenu = false;
@@ -981,112 +988,206 @@ class _RoomScreenState extends State<RoomScreen> {
 
   // 构建村民菜单
   Widget _buildVillagersMenu() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // 显示村民状态
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade900,
-            border: Border.all(color: Colors.grey.shade800),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${GameSettings.languageManager.get('total_population', category: 'villagers')}: ${_population['total'] ?? 0}/${_population['max'] ?? 0}',
-                style: const TextStyle(color: Colors.white),
-              ),
-              Text(
-                '${GameSettings.languageManager.get('happiness', category: 'villagers')}: ${_population['happiness']?.toStringAsFixed(0) ?? 100}%',
-                style: TextStyle(
-                  color: _getHappinessColor(_population['happiness'] ?? 100),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        // 显示可招募的村民
-        ...widget.gameState.villagerTypes.entries.map((entry) {
-          final type = entry.key;
-          final count = _population['workers']?[type] ?? 0;
+    // 添加错误处理
+    try {
+      // 记录详细日志
+      releaseLog("构建村民菜单开始");
+      releaseLog("村民类型数量: ${widget.gameState.villagerTypes.length}");
 
-          // 检查是否可以招募
-          bool canRecruit = widget.gameState.canRecruitVillager(type);
+      if (_population.containsKey('happiness')) {
+        var happinessValue = _population['happiness'];
+        releaseLog("幸福度值: $happinessValue");
+        releaseLog("幸福度类型: ${happinessValue.runtimeType}");
+      } else {
+        releaseLog("幸福度值不存在");
+      }
 
-          return Container(
+      // 检查villagerTypes是否为空
+      if (widget.gameState.villagerTypes.isEmpty) {
+        releaseLog("villagerTypes为空");
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade900,
+                border: Border.all(color: Colors.red),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                '无法加载村民数据，请重启应用',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _showVillagersMenu = false;
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey.shade800,
+                minimumSize: const Size(double.infinity, 40),
+              ),
+              child: const Text('返回'),
+            ),
+          ],
+        );
+      }
+
+      // 检查population是否初始化
+      if (_population == null || _population.isEmpty) {
+        _population = {'total': 0, 'max': 0, 'happiness': 100.0, 'workers': {}};
+      }
+
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 显示村民状态
+          Container(
             width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: Colors.grey.shade900,
-              border: Border.all(
-                color: canRecruit ? Colors.grey.shade700 : Colors.grey.shade800,
-              ),
+              border: Border.all(color: Colors.grey.shade800),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: ListTile(
-              title: Text(
-                '${GameSettings.languageManager.get(type, category: 'villagers')} ($count)',
-                style: TextStyle(
-                  color: canRecruit ? Colors.white : Colors.grey,
-                  fontWeight: FontWeight.bold,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${GameSettings.languageManager.get('total_population', category: 'villagers')}: ${_population['total'] ?? 0}/${_population['max'] ?? 0}',
+                  style: const TextStyle(color: Colors.white),
                 ),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    GameSettings.languageManager
-                        .get('${type}_desc', category: 'villagers'),
-                    style: TextStyle(
-                      color: canRecruit
-                          ? Colors.grey.shade300
-                          : Colors.grey.shade600,
-                      fontSize: 12,
-                    ),
+                Text(
+                  '${GameSettings.languageManager.get('happiness', category: 'villagers')}: ${_population['happiness']?.toStringAsFixed(0) ?? 100}%',
+                  style: TextStyle(
+                    color: _getHappinessColor(_population['happiness'] != null
+                        ? (_population['happiness'] is int
+                            ? (_population['happiness'] as int).toDouble()
+                            : _population['happiness'] as double)
+                        : 100.0),
                   ),
-                  Text(
-                    '${GameSettings.languageManager.get('requires', category: 'common')}: ${_formatCost(entry.value['cost'] as Map<String, dynamic>)}',
-                    style: TextStyle(
-                      color: canRecruit
-                          ? Colors.grey.shade400
-                          : Colors.grey.shade700,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-              onTap: canRecruit
-                  ? () {
-                      if (widget.gameState.recruitVillager(type)) {
-                        _addLog(
-                            '${GameSettings.languageManager.get('recruited', category: 'villagers')} ${GameSettings.languageManager.get(type, category: 'villagers')}.');
-                      }
-                    }
-                  : null,
+                ),
+              ],
             ),
-          );
-        }),
-        const SizedBox(height: 16),
-        ElevatedButton(
-          onPressed: () {
-            setState(() {
-              _showVillagersMenu = false;
-            });
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey.shade800,
-            minimumSize: const Size(double.infinity, 40),
           ),
-          child: Text(
-              GameSettings.languageManager.get('back', category: 'common')),
-        ),
-      ],
-    );
+          const SizedBox(height: 10),
+          // 显示可招募的村民
+          ...widget.gameState.villagerTypes.entries.map((entry) {
+            final type = entry.key;
+            final count = _population['workers']?[type] ?? 0;
+
+            // 检查是否可以招募
+            bool canRecruit = widget.gameState.canRecruitVillager(type);
+
+            return Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 10),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade900,
+                border: Border.all(
+                  color:
+                      canRecruit ? Colors.grey.shade700 : Colors.grey.shade800,
+                ),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: ListTile(
+                title: Text(
+                  '${GameSettings.languageManager.get(type, category: 'villagers')} ($count)',
+                  style: TextStyle(
+                    color: canRecruit ? Colors.white : Colors.grey,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      GameSettings.languageManager
+                          .get('${type}_desc', category: 'villagers'),
+                      style: TextStyle(
+                        color: canRecruit
+                            ? Colors.grey.shade300
+                            : Colors.grey.shade600,
+                        fontSize: 12,
+                      ),
+                    ),
+                    Text(
+                      '${GameSettings.languageManager.get('requires', category: 'common')}: ${_formatCost(entry.value['cost'] as Map<String, dynamic>)}',
+                      style: TextStyle(
+                        color: canRecruit
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade700,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+                onTap: canRecruit
+                    ? () {
+                        if (widget.gameState.recruitVillager(type)) {
+                          _addLog(
+                              '${GameSettings.languageManager.get('recruited', category: 'villagers')} ${GameSettings.languageManager.get(type, category: 'villagers')}.');
+                        }
+                      }
+                    : null,
+              ),
+            );
+          }),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _showVillagersMenu = false;
+              });
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.grey.shade800,
+              minimumSize: const Size(double.infinity, 40),
+            ),
+            child: Text(
+                GameSettings.languageManager.get('back', category: 'common')),
+          ),
+        ],
+      );
+    } catch (e) {
+      // 如果发生任何异常，显示错误消息
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade900,
+              border: Border.all(color: Colors.red),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              '加载村民数据出错: $e',
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _showVillagersMenu = false;
+              });
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.grey.shade800,
+              minimumSize: const Size(double.infinity, 40),
+            ),
+            child: const Text('返回'),
+          ),
+        ],
+      );
+    }
   }
 
   // 获取幸福度颜色
